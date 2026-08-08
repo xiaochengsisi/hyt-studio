@@ -42,6 +42,8 @@ export interface SiteConfig {
   smtpUser?: string;
   smtpPass?: string;
   smtpFrom?: string;
+  /** Webhook 推送地址（多个用逗号或换行分隔），留空则不推送 */
+  webhookUrls?: string;
   content?: PageContent;
   createdAt: string;
   updatedAt: string;
@@ -232,6 +234,21 @@ export interface DashboardStats {
   products: { total: number; published: number };
   articles: { total: number; published: number };
   submissions: { total: number; pending: number };
+  /** 互动汇总 */
+  engagement: {
+    totalViews: number;
+    totalLikes: number;
+    totalStars: number;
+  };
+  /** 其他实体计数 */
+  counts: {
+    members: number;
+    topics: number;
+    subscribers: number;
+    media: number;
+  };
+  /** 浏览量 Top 产品 */
+  topProducts: { id: number; slug: string; name: string; viewCount: number; likeCount: number; githubStars: number }[];
   recentSubmissions: ProjectSubmission[];
   recentAudit: AuditLogEntry[];
 }

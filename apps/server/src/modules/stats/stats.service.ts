@@ -7,6 +7,9 @@ import { Article } from '../articles/article.entity';
 import { Submission } from '../submissions/submission.entity';
 import { AuditLog } from '../audit-log/audit-log.entity';
 import { Member } from '../members/member.entity';
+import { Topic } from '../topics/topic.entity';
+import { Subscriber } from '../subscribers/subscriber.entity';
+import { Media } from '../media/media.entity';
 
 @Injectable()
 export class StatsService {
@@ -16,6 +19,9 @@ export class StatsService {
     @InjectRepository(Submission) private readonly submissions: Repository<Submission>,
     @InjectRepository(AuditLog) private readonly audit: Repository<AuditLog>,
     @InjectRepository(Member) private readonly members: Repository<Member>,
+    @InjectRepository(Topic) private readonly topics: Repository<Topic>,
+    @InjectRepository(Subscriber) private readonly subscribers: Repository<Subscriber>,
+    @InjectRepository(Media) private readonly media: Repository<Media>,
   ) {}
 
   async getDashboardStats(): Promise<DashboardStats> {
@@ -28,6 +34,14 @@ export class StatsService {
       submissionPending,
       recentSubmissions,
       recentAudit,
+      viewsAgg,
+      likesAgg,
+      starsAgg,
+      memberCount,
+      topicCount,
+      subscriberCount,
+      mediaCount,
+      topProducts,
     ] = await Promise.all([
       this.products.count(),
       this.products.count({ where: { status: 'published' } }),
@@ -37,12 +51,53 @@ export class StatsService {
       this.submissions.count({ where: { status: 'pending' } }),
       this.submissions.find({ order: { id: 'DESC' }, take: 5 }),
       this.audit.find({ order: { createdAt: 'DESC' }, take: 5 }),
+      this.products
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.viewCount),0)', 'sum')
+        .getRawOne<{ sum: string }>(),
+      this.products
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.likeCount),0)', 'sum')
+        .getRawOne<{ sum: string }>(),
+      this.products
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.githubStars),0)', 'sum')
+        .getRawOne<{ sum: string }>(),
+      this.members.count(),
+      this.topics.count(),
+      this.subscribers.count(),
+      this.media.count(),
+      this.products.find({
+        where: { status: 'published' as any },
+        order: { viewCount: 'DESC' },
+        take: 5,
+        select: ['id', 'slug', 'name', 'viewCount', 'likeCount', 'githubStars'],
+      }),
     ]);
 
     return {
       products: { total: productTotal, published: productPublished },
       articles: { total: articleTotal, published: articlePublished },
       submissions: { total: submissionTotal, pending: submissionPending },
+      engagement: {
+        totalViews: Number(viewsAgg?.sum || 0),
+        totalLikes: Number(likesAgg?.sum || 0),
+        totalStars: Number(starsAgg?.sum || 0),
+      },
+      counts: {
+        members: memberCount,
+        topics: topicCount,
+        subscribers: subscriberCount,
+        media: mediaCount,
+      },
+      topProducts: topProducts.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        viewCount: p.viewCount,
+        likeCount: p.likeCount,
+        githubStars: p.githubStars,
+      })),
       recentSubmissions: recentSubmissions.map((s) => ({
         id: s.id,
         name: s.name,

@@ -6,6 +6,7 @@ import { Subscriber as SubscriberDto } from '@hyt/shared';
 import { Subscriber } from './subscriber.entity';
 import { MailerService } from '../mail/mailer.service';
 import { SiteConfigService } from '../site-config/site-config.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 @Injectable()
 export class SubscribersService {
@@ -13,6 +14,7 @@ export class SubscribersService {
     @InjectRepository(Subscriber) private readonly repo: Repository<Subscriber>,
     private readonly mailer: MailerService,
     private readonly siteConfig: SiteConfigService,
+    private readonly webhook: WebhookService,
   ) {}
 
   private toDto(e: Subscriber): SubscriberDto {
@@ -49,6 +51,7 @@ export class SubscribersService {
     entity.confirmed = true;
     entity.confirmToken = null as any;
     const saved = await this.repo.save(entity);
+    void this.webhook.emit('subscriber.confirmed', { id: saved.id, email: saved.email });
     return this.toDto(saved);
   }
 

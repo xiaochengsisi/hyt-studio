@@ -28,6 +28,13 @@ const form = reactive<Partial<SiteConfig>>({
   giscusRepoId: '',
   giscusCategory: '',
   giscusCategoryId: '',
+  smtpHost: '',
+  smtpPort: 465,
+  smtpSecure: true,
+  smtpUser: '',
+  smtpPass: '',
+  smtpFrom: '',
+  webhookUrls: '',
 });
 
 const saving = ref(false);
@@ -242,6 +249,50 @@ async function onSubmit() {
           <label class="label">分类 ID</label>
           <input class="input" v-model="form.giscusCategoryId" placeholder="DIC_kwDO..." />
         </div>
+      </div>
+
+      <div class="section-divider">邮件（SMTP · 用于 Newsletter）</div>
+      <span class="field-hint" style="display:block;margin-bottom:12px">
+        配置后，订阅者确认邮件与群发邮件将通过此 SMTP 发送。留空则订阅功能仅记录入库不发邮件。
+      </span>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label">SMTP 主机</label>
+          <input class="input" v-model="form.smtpHost" placeholder="smtp.example.com" />
+        </div>
+        <div class="field">
+          <label class="label">端口</label>
+          <input class="input" type="number" v-model.number="form.smtpPort" placeholder="465" />
+        </div>
+        <div class="field">
+          <label class="label">加密方式</label>
+          <select class="select" v-model="form.smtpSecure">
+            <option :value="true">SSL/TLS（端口 465）</option>
+            <option :value="false">STARTTLS（端口 587）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label">发件人地址</label>
+          <input class="input" v-model="form.smtpFrom" placeholder="noreply@example.com" />
+        </div>
+        <div class="field">
+          <label class="label">用户名</label>
+          <input class="input" v-model="form.smtpUser" />
+        </div>
+        <div class="field">
+          <label class="label">密码</label>
+          <input class="input" type="password" v-model="form.smtpPass" placeholder="留空表示不修改" />
+        </div>
+      </div>
+
+      <div class="section-divider">Webhook 推送</div>
+      <span class="field-hint" style="display:block;margin-bottom:12px">
+        在产品/文章发布、新提交、订阅确认时，向以下地址 POST JSON。<br />
+        支持多个 URL（逗号或换行分隔）。事件类型：<code>product.published</code> / <code>article.published</code> / <code>submission.created</code> / <code>subscriber.confirmed</code> 等。
+      </span>
+      <div class="field">
+        <label class="label">Webhook URLs</label>
+        <textarea class="textarea" v-model="form.webhookUrls" rows="3" placeholder="https://hooks.example.com/hyt&#10;https://api.slack.com/..."></textarea>
       </div>
 
       <button class="button button-primary" type="submit" :disabled="saving">

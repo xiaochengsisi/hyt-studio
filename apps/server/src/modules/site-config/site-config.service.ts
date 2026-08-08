@@ -54,6 +54,7 @@ export class SiteConfigService {
       // SMTP 密码仅在 admin 上下文返回，公开接口不暴露
       smtpPass: withSecrets ? e.smtpPass : undefined,
       smtpFrom: e.smtpFrom,
+      webhookUrls: e.webhookUrls,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     };

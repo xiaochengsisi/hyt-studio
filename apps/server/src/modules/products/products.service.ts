@@ -5,6 +5,7 @@ import { Paginated, Product } from '@hyt/shared';
 import { Product as ProductEntity } from './product.entity';
 import { ProductLike } from './product-like.entity';
 import { RevisionsService } from '../revisions/revisions.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 export interface QueryProducts {
   page?: number;
@@ -26,6 +27,7 @@ export class ProductsService {
     @InjectRepository(ProductLike)
     private readonly likesRepo: Repository<ProductLike>,
     private readonly revisions: RevisionsService,
+    private readonly webhook: WebhookService,
   ) {}
 
   /** 简单内存去重：同 IP + 同产品 10 分钟内只计一次浏览 */
@@ -204,16 +206,28 @@ export class ProductsService {
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    if (saved.status === 'published') {
+      void this.webhook.emit('product.published', { id: saved.id, slug: saved.slug, name: saved.name });
+    } else {
+      void this.webhook.emit('product.created', { id: saved.id, slug: saved.slug, name: saved.name, status: saved.status });
+    }
     return dto;
   }
 
   async update(id: number, data: Partial<ProductEntity>, username?: string): Promise<Product> {
     await this.assertSlugUnique(data.slug, id);
     const entity = await this.findById(id);
+    const wasDraft = entity.status !== 'published';
     Object.assign(entity, data);
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    // 草稿 → 已发布 触发 published 事件
+    if (wasDraft && saved.status === 'published') {
+      void this.webhook.emit('product.published', { id: saved.id, slug: saved.slug, name: saved.name });
+    } else {
+      void this.webhook.emit('product.updated', { id: saved.id, slug: saved.slug, name: saved.name });
+    }
     return dto;
   }
 

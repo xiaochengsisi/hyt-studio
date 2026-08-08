@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { auth, logout } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import { ref } from 'vue';
 import ForceChangePassword from '../components/ForceChangePassword.vue';
+import CommandPalette from '../components/CommandPalette.vue';
 
 const router = useRouter();
+const cmdOpen = ref(false);
 
 function onLogout() {
   logout();
@@ -40,6 +43,12 @@ const menu = [
         </div>
       </div>
 
+      <button class="cmd-trigger" @click="cmdOpen = true" title="命令面板 (⌘K)">
+        <span class="cmd-trigger-icon">⌘</span>
+        <span class="cmd-trigger-text">快速跳转…</span>
+        <kbd>K</kbd>
+      </button>
+
       <nav class="menu">
         <router-link
           v-for="m in menu"
@@ -69,6 +78,9 @@ const menu = [
 
     <!-- 首次登录强制改密弹窗：未改密前遮罩整个后台 -->
     <ForceChangePassword />
+
+    <!-- ⌘K 命令面板 -->
+    <CommandPalette v-model="cmdOpen" />
   </div>
 </template>
 
@@ -128,6 +140,44 @@ const menu = [
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.cmd-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-faint);
+  font-size: 12.5px;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.cmd-trigger:hover {
+  border-color: var(--ink);
+  color: var(--text-muted);
+}
+
+.cmd-trigger-icon {
+  font-size: 13px;
+}
+
+.cmd-trigger-text {
+  flex: 1;
+  text-align: left;
+}
+
+.cmd-trigger kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .menu {
@@ -208,7 +258,8 @@ const menu = [
   }
   .brand-text,
   .menu-item span,
-  .user-name {
+  .user-name,
+  .cmd-trigger {
     display: none;
   }
   .menu-item {

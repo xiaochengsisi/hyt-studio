@@ -108,6 +108,10 @@ export class SiteConfig {
   @Column({ nullable: true })
   smtpFrom?: string;
 
+  /** Webhook 推送地址（多个用逗号或换行分隔），留空则不推送 */
+  @Column({ type: 'text', nullable: true })
+  webhookUrls?: string;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: string;
 

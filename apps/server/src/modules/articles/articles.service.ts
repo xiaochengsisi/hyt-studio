@@ -4,6 +4,7 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { Article as ArticleDto, Paginated } from '@hyt/shared';
 import { Article as ArticleEntity } from './article.entity';
 import { RevisionsService } from '../revisions/revisions.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 export interface QueryArticles {
   page?: number;
@@ -18,6 +19,7 @@ export class ArticlesService {
     @InjectRepository(ArticleEntity)
     private readonly repo: Repository<ArticleEntity>,
     private readonly revisions: RevisionsService,
+    private readonly webhook: WebhookService,
   ) {}
 
   private toDto(e: ArticleEntity): ArticleDto {
@@ -88,16 +90,27 @@ export class ArticlesService {
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('article', saved.id, dto, username);
+    if (saved.status === 'published') {
+      void this.webhook.emit('article.published', { id: saved.id, slug: saved.slug, title: saved.title });
+    } else {
+      void this.webhook.emit('article.created', { id: saved.id, slug: saved.slug, title: saved.title, status: saved.status });
+    }
     return dto;
   }
 
   async update(id: number, data: Partial<ArticleEntity>, username?: string): Promise<ArticleDto> {
     await this.assertSlugUnique(data.slug, id);
     const entity = await this.findById(id);
+    const wasDraft = entity.status !== 'published';
     Object.assign(entity, data);
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('article', saved.id, dto, username);
+    if (wasDraft && saved.status === 'published') {
+      void this.webhook.emit('article.published', { id: saved.id, slug: saved.slug, title: saved.title });
+    } else {
+      void this.webhook.emit('article.updated', { id: saved.id, slug: saved.slug, title: saved.title });
+    }
     return dto;
   }
 

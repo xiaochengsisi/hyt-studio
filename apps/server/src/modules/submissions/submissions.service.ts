@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ApproveAndCreateResult, Paginated, Product, ProjectSubmission } from '@hyt/shared';
 import { Submission as SubmissionEntity } from './submission.entity';
 import { ProductsService } from '../products/products.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 export interface QuerySubmissions {
   page?: number;
@@ -18,6 +19,7 @@ export class SubmissionsService {
     @InjectRepository(SubmissionEntity)
     private readonly repo: Repository<SubmissionEntity>,
     private readonly productsService: ProductsService,
+    private readonly webhook: WebhookService,
   ) {}
 
   private toDto(e: SubmissionEntity): ProjectSubmission {
@@ -49,6 +51,12 @@ export class SubmissionsService {
       status: data.status || 'pending',
     });
     const saved = await this.repo.save(entity);
+    void this.webhook.emit('submission.created', {
+      id: saved.id,
+      name: saved.name,
+      author: saved.author,
+      repoUrl: saved.repoUrl,
+    });
     return this.toDto(saved);
   }
 
