@@ -225,6 +225,62 @@ export interface DashboardStats {
   recentAudit: AuditLogEntry[];
 }
 
+/** 前台公开的站点聚合统计（首页数字带） */
+export interface SiteStats {
+  /** 已发布产品数 */
+  products: number;
+  /** 已发布文章数 */
+  articles: number;
+  /** 全部产品 GitHub Star 汇总 */
+  totalStars: number;
+  /** 全部产品浏览量汇总 */
+  totalViews: number;
+  /** 全部产品点赞汇总 */
+  totalLikes: number;
+  /** 团队成员数 */
+  members: number;
+}
+
+/** 活动流条目（首页「最近动态」聚合展示） */
+export interface ActivityItem {
+  /** 条目类型：新上架产品 / 新发布文章 / 新版本发布 */
+  type: 'product' | 'article' | 'release';
+  /** 标题 */
+  title: string;
+  /** 跳转 slug（产品 / 文章详情） */
+  slug?: string;
+  /** 摘要描述 */
+  description?: string;
+  /** 发生时间（ISO） */
+  time: string;
+  /** 附加元信息（如版本号、语言） */
+  meta?: string;
+}
+
+/** 团队成员 */
+export interface Member {
+  id: number;
+  name: string;
+  /** 角色 / 头衔（如：创始人 / 维护者 / 贡献者） */
+  role: string;
+  /** 简介 */
+  bio?: string;
+  /** 头像 URL */
+  avatarUrl?: string;
+  /** GitHub 链接 */
+  github?: string;
+  /** Twitter / X 链接 */
+  twitter?: string;
+  /** 邮箱 */
+  email?: string;
+  /** 个人站点 */
+  website?: string;
+  /** 排序值（越小越靠前） */
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** 批量操作请求 */
 export interface BulkActionPayload {
   ids: number[];

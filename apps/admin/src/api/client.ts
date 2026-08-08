@@ -12,6 +12,7 @@ import type {
   AuditLogEntry,
   BulkActionResult,
   BulkActionPayload,
+  Member,
 } from '@hyt/shared';
 import { logout } from '../stores/auth';
 
@@ -142,4 +143,14 @@ export const adminApi = {
     const s = q.toString();
     return request<Paginated<AuditLogEntry>>(`/audit-log${s ? '?' + s : ''}`);
   },
+
+  // members（团队成员）
+  listMembers: () => request<Member[]>('/members/admin'),
+  getMember: (id: number) => request<Member>(`/members/admin/${id}`),
+  createMember: (data: Partial<Member>) =>
+    request<Member>('/members/admin', { method: 'POST', body: JSON.stringify(data) }),
+  updateMember: (id: number, data: Partial<Member>) =>
+    request<Member>(`/members/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteMember: (id: number) =>
+    request<void>(`/members/admin/${id}`, { method: 'DELETE' }),
 };

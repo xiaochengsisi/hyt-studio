@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { api } from '../api/client';
-import type { Article, Product } from '@hyt/shared';
+import type { Article, Product, SiteStats, ActivityItem } from '@hyt/shared';
 import Skeleton from '../components/Skeleton.vue';
 import ProductCard from '../components/ProductCard.vue';
 import { resolveContent, type PageContent } from '../content';
@@ -9,16 +9,20 @@ import { resolveContent, type PageContent } from '../content';
 const products = ref<Product[]>([]);
 const hotProducts = ref<Product[]>([]);
 const articles = ref<Article[]>([]);
+const stats = ref<SiteStats | null>(null);
+const activity = ref<ActivityItem[]>([]);
 const loading = ref(true);
 const content = ref<PageContent>(resolveContent());
 
 onMounted(async () => {
   try {
-    const [cfg, all, hot, latest] = await Promise.all([
+    const [cfg, all, hot, latest, s, act] = await Promise.all([
       api.getSiteConfig(),
       api.getProducts(),
       api.getHotProducts().catch(() => [] as Product[]),
       api.getArticles({ pageSize: 3 }).catch(() => ({ items: [] as Article[], total: 0 })),
+      api.getSiteStats().catch(() => null),
+      api.getActivity(6).catch(() => [] as ActivityItem[]),
     ]);
     content.value = resolveContent(cfg.content);
     products.value = all.items;
@@ -26,6 +30,8 @@ onMounted(async () => {
     const featuredIds = new Set(all.items.slice(0, 4).map((p) => p.id));
     hotProducts.value = hot.filter((p) => !featuredIds.has(p.id)).slice(0, 4);
     articles.value = latest.items;
+    stats.value = s;
+    activity.value = act;
   } finally {
     loading.value = false;
   }
@@ -44,6 +50,26 @@ function articleDate(s?: string): string {
   const d = new Date(s);
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
+
+function fmtNum(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k';
+  return String(n);
+}
+
+function activityHref(a: ActivityItem): string {
+  if (a.slug && a.type === 'article') return `/blog/${a.slug}`;
+  if (a.slug) return `/products/${a.slug}`;
+  return '#';
+}
+
+function activityLabel(t: ActivityItem['type']): string {
+  return t === 'article' ? '文章' : t === 'release' ? '版本' : '项目';
+}
+
+function activityTime(s: string): string {
+  const d = new Date(s);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
 </script>
 
 <template>
@@ -59,6 +85,32 @@ function articleDate(s?: string): string {
       <div class="hero-actions" v-reveal="'d-3'">
         <router-link to="/products" class="button button-primary button-lg">浏览项目</router-link>
         <router-link to="/about" class="text-link">关于工作室<span class="tl-arrow">→</span></router-link>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 站点统计数字带 ============ -->
+  <section v-if="stats" class="stats-band" v-reveal>
+    <div class="container stats-row">
+      <div class="stat">
+        <span class="stat-num">{{ fmtNum(stats.products) }}</span>
+        <span class="stat-label">开源项目</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ fmtNum(stats.totalStars) }}</span>
+        <span class="stat-label">GitHub Stars</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ fmtNum(stats.totalViews) }}</span>
+        <span class="stat-label">累计浏览</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ fmtNum(stats.totalLikes) }}</span>
+        <span class="stat-label">累计点赞</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ fmtNum(stats.members) }}</span>
+        <span class="stat-label">团队成员</span>
       </div>
     </div>
   </section>
@@ -116,6 +168,37 @@ function articleDate(s?: string): string {
         <div v-for="(p, i) in hotProducts" :key="p.id" v-reveal="`d-${(i % 4) + 1}`">
           <ProductCard :product="p" />
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 最近动态（活动流） ============ -->
+  <section v-if="activity.length" class="section">
+    <div class="container">
+      <div class="section-head" v-reveal>
+        <div class="section-head-main">
+          <span class="section-eyebrow">动态</span>
+          <h2 class="section-title">最近动态</h2>
+          <p class="section-sub">新项目上架、版本发布与文章更新。</p>
+        </div>
+      </div>
+
+      <div class="activity-list" v-reveal="'d-1'">
+        <component
+          :is="a.slug ? 'router-link' : 'div'"
+          v-for="a in activity"
+          :key="`${a.type}-${a.slug || a.title}-${a.time}`"
+          :to="a.slug ? activityHref(a) : undefined"
+          class="activity-item"
+        >
+          <span class="activity-badge" :class="`badge-${a.type}`">{{ activityLabel(a.type) }}</span>
+          <div class="activity-main">
+            <span class="activity-title">{{ a.title }}</span>
+            <span v-if="a.description" class="activity-desc">{{ a.description }}</span>
+          </div>
+          <span v-if="a.meta" class="activity-meta mono">{{ a.meta }}</span>
+          <span class="activity-time mono">{{ activityTime(a.time) }}</span>
+        </component>
       </div>
     </div>
   </section>
@@ -517,5 +600,129 @@ function articleDate(s?: string): string {
   .section { padding: 56px 0; }
   .row { grid-template-columns: 32px 1fr; }
   .row-arrow { display: none; }
+}
+
+/* ===== 站点统计数字带 ===== */
+.stats-band {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  padding: 36px 28px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.stats-band .stat-num {
+  font-family: var(--mono);
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.stats-band .stat-label {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+@media (max-width: 720px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px 16px;
+    padding: 28px 28px;
+  }
+}
+
+/* ===== 活动流 ===== */
+.activity-list {
+  border-top: 1px solid var(--line);
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease;
+}
+
+.activity-item:hover {
+  background: var(--bg-soft);
+}
+
+.activity-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  color: var(--text-muted);
+}
+
+.badge-product { color: var(--accent); border-color: rgba(10, 125, 80, 0.35); }
+.badge-release { color: var(--ink); border-color: var(--ink); }
+.badge-article { color: var(--text-muted); }
+
+.activity-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.activity-item:hover .activity-title {
+  color: var(--accent);
+}
+
+.activity-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.activity-time {
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+  .activity-item {
+    grid-template-columns: 48px 1fr;
+    row-gap: 4px;
+  }
+  .activity-meta,
+  .activity-time {
+    grid-column: 2;
+    font-size: 11px;
+  }
 }
 </style>

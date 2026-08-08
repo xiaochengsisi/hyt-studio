@@ -5,11 +5,14 @@ import SiteFooter from './components/SiteFooter.vue';
 import BackToTop from './components/BackToTop.vue';
 import { api } from './api/client';
 import { applySiteSeo } from './composables/useSeo';
+import { initTheme } from './composables/useTheme';
 import type { SiteConfig } from '@hyt/shared';
 
 const site = ref<SiteConfig | null>(null);
 
 onMounted(async () => {
+  // 初始化主题（暗色模式）：尽早应用，避免闪烁
+  initTheme();
   try {
     site.value = await api.getSiteConfig();
   } catch {

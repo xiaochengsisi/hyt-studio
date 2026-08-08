@@ -20,6 +20,7 @@
   --radius: 2px;
   --max-w: 1200px;
   --shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.25);
+  --header-bg: rgba(255, 255, 255, 0.88);
 
   /* —— 兼容旧变量名，统一映射到新配色 —— */
   --border: var(--line);
@@ -31,6 +32,62 @@
   --gradient: var(--accent);
   --glow: rgba(10, 125, 80, 0.3);
   --bg-soft: #f7f7f5;
+}
+
+/* —— 暗色模式：通过 <html data-theme="dark"> 显式启用 —— */
+:root[data-theme="dark"] {
+  --bg: #0f0f0d;
+  --bg-soft: #181816;
+  --bg-muted: #20201d;
+  --ink: #f3f3ef;
+  --text: #ededea;
+  --text-muted: #a3a39c;
+  --text-faint: #6f6f68;
+  --line: #2a2a26;
+  --line-strong: #3a3a35;
+
+  --accent: #2ecc84;
+  --accent-strong: #4dd99a;
+  --accent-soft: rgba(46, 204, 132, 0.12);
+
+  --shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.6);
+  --header-bg: rgba(15, 15, 13, 0.82);
+
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --card: var(--bg);
+  --primary: var(--accent);
+  --primary-strong: var(--accent);
+  --primary-soft: var(--accent-soft);
+  --gradient: var(--accent);
+  --glow: rgba(46, 204, 132, 0.3);
+}
+
+/* 系统级暗色偏好：仅当用户未显式选择时生效（无 data-theme 属性） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #0f0f0d;
+    --bg-soft: #181816;
+    --bg-muted: #20201d;
+    --ink: #f3f3ef;
+    --text: #ededea;
+    --text-muted: #a3a39c;
+    --text-faint: #6f6f68;
+    --line: #2a2a26;
+    --line-strong: #3a3a35;
+    --accent: #2ecc84;
+    --accent-strong: #4dd99a;
+    --accent-soft: rgba(46, 204, 132, 0.12);
+    --shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.6);
+    --header-bg: rgba(15, 15, 13, 0.82);
+    --border: var(--line);
+    --border-strong: var(--line-strong);
+    --card: var(--bg);
+    --primary: var(--accent);
+    --primary-strong: var(--accent);
+    --primary-soft: var(--accent-soft);
+    --glow: rgba(46, 204, 132, 0.3);
+  }
 }
 
 * {

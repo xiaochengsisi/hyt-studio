@@ -6,6 +6,9 @@ import type {
   Article,
   ProjectSubmission,
   SubmitProjectPayload,
+  SiteStats,
+  ActivityItem,
+  Member,
 } from '@hyt/shared';
 
 const BASE = '/api';
@@ -68,4 +71,11 @@ export const api = {
   getArticle: (slug: string) => request<Article>(`/articles/slug/${slug}`),
   submitProject: (data: SubmitProjectPayload) =>
     request<ProjectSubmission>('/submissions', { method: 'POST', body: JSON.stringify(data) }),
+
+  // 公开统计与活动流（首页数字带 + 最近动态）
+  getSiteStats: () => request<SiteStats>('/stats/public'),
+  getActivity: (limit = 8) => request<ActivityItem[]>(`/stats/activity?limit=${limit}`),
+
+  // 团队成员（前台 /team）
+  getMembers: () => request<Member[]>('/members'),
 };

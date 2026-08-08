@@ -1,15 +1,30 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { setLocale, getLocale, type AppLocale } from '../i18n';
+import { getResolvedTheme, toggleTheme, onThemeChange } from '../composables/useTheme';
 
 defineProps<{ siteName: string }>();
 
 const { t } = useI18n();
 const current = computed(() => getLocale());
+const theme = ref<'light' | 'dark'>('light');
+
+function refreshTheme() {
+  theme.value = getResolvedTheme();
+}
+onMounted(() => {
+  refreshTheme();
+  onThemeChange(refreshTheme);
+});
 
 function toggleLocale() {
   setLocale((current.value === 'zh-CN' ? 'en-US' : 'zh-CN') as AppLocale);
+}
+
+function onToggleTheme() {
+  toggleTheme();
+  refreshTheme();
 }
 </script>
 
@@ -28,11 +43,16 @@ function toggleLocale() {
       <nav class="nav">
         <router-link to="/products" class="nav-link">{{ t('nav.products') }}</router-link>
         <router-link to="/blog" class="nav-link">{{ t('nav.blog') }}</router-link>
+        <router-link to="/team" class="nav-link">团队</router-link>
         <router-link to="/about" class="nav-link">{{ t('nav.about') }}</router-link>
         <router-link to="/submit" class="nav-link">{{ t('nav.submit') }}</router-link>
       </nav>
 
       <div class="header-actions">
+        <button class="icon-toggle" :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'" @click="onToggleTheme">
+          <span v-if="theme === 'dark'">☀</span>
+          <span v-else>☾</span>
+        </button>
         <button class="lang-toggle" :title="t('lang.switch')" @click="toggleLocale">
           {{ current === 'zh-CN' ? 'EN' : '中' }}
         </button>
@@ -47,7 +67,7 @@ function toggleLocale() {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
@@ -112,21 +132,29 @@ function toggleLocale() {
   font-size: 14px;
 }
 
-.lang-toggle {
+.lang-toggle,
+.icon-toggle {
   width: 32px;
   height: 32px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--mono);
   cursor: pointer;
+  display: grid;
+  place-items: center;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.lang-toggle:hover {
+.icon-toggle {
+  font-size: 15px;
+}
+
+.lang-toggle:hover,
+.icon-toggle:hover {
   color: var(--ink);
   border-color: var(--text-faint);
 }

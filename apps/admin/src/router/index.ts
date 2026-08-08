@@ -19,6 +19,7 @@ export const router = createRouter({
         { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue') },
         { path: 'content', name: 'content', component: () => import('../views/ContentView.vue') },
         { path: 'users', name: 'users', component: () => import('../views/UsersView.vue') },
+        { path: 'members', name: 'members', component: () => import('../views/MembersView.vue') },
         { path: 'submissions', name: 'submissions', component: () => import('../views/SubmissionsView.vue') },
         { path: 'audit-log', name: 'audit-log', component: () => import('../views/AuditLogView.vue') },
       ],

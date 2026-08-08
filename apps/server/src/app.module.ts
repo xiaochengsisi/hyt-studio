@@ -21,12 +21,14 @@ import { AuditInterceptor } from './modules/audit-log/audit.interceptor';
 import { AuditLog } from './modules/audit-log/audit-log.entity';
 import { StatsModule } from './modules/stats/stats.module';
 import { HealthModule } from './modules/health/health.module';
+import { MembersModule } from './modules/members/members.module';
 import { User } from './modules/users/user.entity';
 import { Product } from './modules/products/product.entity';
 import { ProductLike } from './modules/products/product-like.entity';
 import { Article } from './modules/articles/article.entity';
 import { SiteConfig } from './modules/site-config/site-config.entity';
 import { Submission } from './modules/submissions/submission.entity';
+import { Member } from './modules/members/member.entity';
 
 @Module({
   imports: [
@@ -36,7 +38,7 @@ import { Submission } from './modules/submissions/submission.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),
-      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog],
+      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog, Member],
       // 生产环境关闭 synchronize 以避免数据丢失，改用迁移；开发环境保留以方便迭代
       synchronize: process.env.NODE_ENV !== 'production',
       migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
@@ -56,6 +58,7 @@ import { Submission } from './modules/submissions/submission.entity';
     AuditLogModule,
     StatsModule,
     HealthModule,
+    MembersModule,
   ],
   providers: [
     {

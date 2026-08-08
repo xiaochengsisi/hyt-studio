@@ -6,6 +6,7 @@ import type { Product } from '@hyt/shared';
 import MarkdownRenderer from '../components/MarkdownRenderer.vue';
 import ShareBar from '../components/ShareBar.vue';
 import Comments from '../components/Comments.vue';
+import InstallCopy from '../components/InstallCopy.vue';
 import { setSeo, setJsonLd } from '../composables/useSeo';
 import { getAnonId, getLikedSlugs, setLiked, fmtCount } from '../utils/anon-id';
 
@@ -167,6 +168,9 @@ function fmtDate(s?: string): string {
             <img v-for="(s, i) in screenshotsList()" :key="i" :src="s" alt="screenshot" loading="lazy" />
           </div>
         </div>
+
+        <!-- 安装命令一键复制 -->
+        <InstallCopy v-if="product.repoUrl || product.homepage" :product="product" v-reveal="'d-2'" />
 
         <div class="card body-card" v-reveal="'d-3'">
           <h2 class="bc-title">项目简介</h2>
