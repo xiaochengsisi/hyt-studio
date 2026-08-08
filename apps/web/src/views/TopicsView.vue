@@ -2,8 +2,6 @@
 import { onMounted, ref } from 'vue';
 import { api } from '../api/client';
 import type { Topic } from '@hyt/shared';
-import SiteHeader from '../components/SiteHeader.vue';
-import SiteFooter from '../components/SiteFooter.vue';
 
 const topics = ref<Topic[]>([]);
 const loading = ref(true);
@@ -22,8 +20,6 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <SiteHeader />
-
     <section class="container section">
       <div class="section-head">
         <span class="eyebrow">Topics</span>
@@ -54,8 +50,6 @@ onMounted(async () => {
         </router-link>
       </div>
     </section>
-
-    <SiteFooter />
   </div>
 </template>
 

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { BulkActionResult, BulkActionPayload, Paginated, Product } from '@hyt/shared';
+import { BulkActionResult, BulkActionPayload, HealthBadge, Paginated, Product } from '@hyt/shared';
 import { ProductsService, QueryProducts } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -45,8 +45,14 @@ export class ProductsController {
   /** Public: single product by slug */
   @Public()
   @Get('slug/:slug')
-  bySlug(@Param('slug') slug: string, @Req() req: any): Promise<Product> {
-    return this.productsService.findBySlug(slug, true, req.ip);
+  bySlug(
+    @Param('slug') slug: string,
+    @Query('lang') lang: string | undefined,
+    @Req() req: any,
+  ): Promise<Product> {
+    // 优先使用 ?lang= 参数，否则从 Accept-Language 头解析主语言
+    const locale = lang || parseAcceptLanguage(req.headers['accept-language']);
+    return this.productsService.findBySlug(slug, true, req.ip, locale);
   }
 
   /** Public: 相关项目（按标签重合度） */
@@ -54,6 +60,14 @@ export class ProductsController {
   @Get('slug/:slug/related')
   related(@Param('slug') slug: string): Promise<Product[]> {
     return this.productsService.findRelated(slug);
+  }
+
+  /** Public: 项目健康度徽章（基于 GitHub 同步数据自动计算） */
+  @Public()
+  @Get('slug/:slug/health')
+  async health(@Param('slug') slug: string): Promise<{ badges: HealthBadge[] }> {
+    const badges = await this.productsService.computeHealth(slug);
+    return { badges };
   }
 
   /** Public: 匿名点赞/取消点赞（按 anonId 去重） */
@@ -106,3 +120,22 @@ export class ProductsController {
     return this.productsService.remove(Number(id));
   }
 }
+
+/**
+ * 解析 Accept-Language 头，取首选语言并规范化为 locale（如 en-US / zh-CN）。
+ * 仅返回符合 `xx` 或 `xx-XX` 格式的语言代码；否则返回 undefined。
+ */
+function parseAcceptLanguage(header?: string): string | undefined {
+  if (!header) return undefined;
+  const first = header.split(',')[0]?.trim();
+  if (!first) return undefined;
+  // 形如 "zh-CN,zh;q=0.9" → 取分号前
+  const raw = first.split(';')[0].trim();
+  if (!raw) return undefined;
+  const parts = raw.split('-');
+  if (parts.length === 1) {
+    return parts[0].toLowerCase();
+  }
+  return `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+}
+

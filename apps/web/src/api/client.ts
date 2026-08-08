@@ -10,6 +10,7 @@ import type {
   ActivityItem,
   Member,
   Topic,
+  HealthBadge,
 } from '@hyt/shared';
 
 const BASE = '/api';
@@ -53,6 +54,8 @@ export const api = {
   },
   getProduct: (slug: string) => request<Product>(`/products/slug/${slug}`),
   getRelatedProducts: (slug: string) => request<Product[]>(`/products/slug/${slug}/related`),
+  getHealthBadges: (slug: string) =>
+    request<{ badges: HealthBadge[] }>(`/products/slug/${slug}/health`),
   getProductsTags: () => request<{ name: string; count: number }[]>('/products/tags'),
   getProductsLanguages: () => request<{ name: string; count: number }[]>('/products/languages'),
   getHotProducts: () => request<Product[]>('/products/hot'),

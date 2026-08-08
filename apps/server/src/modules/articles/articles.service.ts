@@ -5,6 +5,7 @@ import { Article as ArticleDto, Paginated } from '@hyt/shared';
 import { Article as ArticleEntity } from './article.entity';
 import { RevisionsService } from '../revisions/revisions.service';
 import { WebhookService } from '../webhook/webhook.service';
+import { TranslationsService } from '../translations/translations.service';
 
 export interface QueryArticles {
   page?: number;
@@ -20,6 +21,7 @@ export class ArticlesService {
     private readonly repo: Repository<ArticleEntity>,
     private readonly revisions: RevisionsService,
     private readonly webhook: WebhookService,
+    private readonly translations: TranslationsService,
   ) {}
 
   private toDto(e: ArticleEntity): ArticleDto {
@@ -62,12 +64,24 @@ export class ArticlesService {
     return { items: items.map((e) => this.toDto(e)), total, page, pageSize };
   }
 
-  async findBySlug(slug: string, onlyPublished = false): Promise<ArticleDto> {
+  async findBySlug(slug: string, onlyPublished = false, lang?: string): Promise<ArticleDto> {
     const where: FindOptionsWhere<ArticleEntity> = { slug };
     if (onlyPublished) where.status = 'published';
     const entity = await this.repo.findOne({ where });
     if (!entity) throw new NotFoundException('文章不存在');
-    return this.toDto(entity);
+    const dto = this.toDto(entity);
+    // 多语言：若指定 lang 且存在翻译，覆盖对应字段
+    if (lang) {
+      const t = await this.translations.get('article', entity.id, lang);
+      if (t && Object.keys(t).length) {
+        for (const k of ['title', 'summary', 'content']) {
+          if (typeof t[k] === 'string' && t[k]!.length) {
+            (dto as any)[k] = t[k];
+          }
+        }
+      }
+    }
+    return dto;
   }
 
   async findById(id: number): Promise<ArticleEntity> {

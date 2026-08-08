@@ -285,6 +285,18 @@ export interface ActivityItem {
   meta?: string;
 }
 
+/** 项目健康度徽章（基于 GitHub 数据自动计算） */
+export interface HealthBadge {
+  /** 徽章键：active / maintained / stale / popular / licensed / newcommer */
+  key: string;
+  /** 展示文案 */
+  label: string;
+  /** 视觉色调：green / yellow / red / gray / blue */
+  tone: 'green' | 'yellow' | 'red' | 'gray' | 'blue';
+  /** 徽章图标 emoji */
+  icon?: string;
+}
+
 /** 团队成员 */
 export interface Member {
   id: number;

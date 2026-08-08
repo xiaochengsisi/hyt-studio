@@ -5,7 +5,15 @@ import { adminApi } from '../api/client';
 import ImageUploader from '../components/ImageUploader.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import RevisionsPanel from '../components/RevisionsPanel.vue';
+import TranslationsPanel from '../components/TranslationsPanel.vue';
 import type { Article } from '@hyt/shared';
+
+/** 文章可翻译字段定义 */
+const translationFields = [
+  { key: 'title', label: '标题' },
+  { key: 'summary', label: '摘要', multiline: true },
+  { key: 'content', label: '正文', multiline: true },
+];
 
 const route = useRoute();
 const router = useRouter();
@@ -209,6 +217,7 @@ async function generateSeo() {
     </form>
 
     <RevisionsPanel v-if="isEdit" type="article" :entity-id="id" />
+    <TranslationsPanel v-if="isEdit" type="article" :entity-id="id" :fields="translationFields" />
   </div>
 </template>
 

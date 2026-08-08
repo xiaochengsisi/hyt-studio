@@ -3,8 +3,6 @@ import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/client';
 import type { Topic } from '@hyt/shared';
-import SiteHeader from '../components/SiteHeader.vue';
-import SiteFooter from '../components/SiteFooter.vue';
 import ProductCard from '../components/ProductCard.vue';
 
 const route = useRoute();
@@ -25,8 +23,6 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <SiteHeader />
-
     <section v-if="loading" class="container section">
       <p class="loading">加载中…</p>
     </section>
@@ -59,8 +55,6 @@ onMounted(async () => {
         </div>
       </section>
     </template>
-
-    <SiteFooter />
   </div>
 </template>
 

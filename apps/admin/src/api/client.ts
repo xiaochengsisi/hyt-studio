@@ -199,4 +199,20 @@ export const adminApi = {
       '/backup/import',
       { method: 'POST', body: JSON.stringify(payload) },
     ),
+
+  // translations（多语言翻译）
+  listTranslations: (type: 'product' | 'article', id: number) =>
+    request<{ locale: string; fields: Record<string, string> }[]>(`/translations/${type}/${id}`),
+  saveTranslation: (
+    type: 'product' | 'article',
+    id: number,
+    locale: string,
+    fields: Record<string, string>,
+  ) =>
+    request<void>(`/translations/${type}/${id}/${locale}`, {
+      method: 'POST',
+      body: JSON.stringify(fields),
+    }),
+  deleteTranslation: (type: 'product' | 'article', id: number, locale: string) =>
+    request<void>(`/translations/${type}/${id}/${locale}`, { method: 'DELETE' }),
 };

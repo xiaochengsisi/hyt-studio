@@ -29,6 +29,7 @@ import { TopicsModule } from './modules/topics/topics.module';
 import { SubscribersModule } from './modules/subscribers/subscribers.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { TranslationsModule } from './modules/translations/translations.module';
 import { User } from './modules/users/user.entity';
 import { Product } from './modules/products/product.entity';
 import { ProductLike } from './modules/products/product-like.entity';
@@ -40,6 +41,7 @@ import { Revision } from './modules/revisions/revision.entity';
 import { Media } from './modules/media/media.entity';
 import { Topic } from './modules/topics/topic.entity';
 import { Subscriber } from './modules/subscribers/subscriber.entity';
+import { Translation } from './modules/translations/translation.entity';
 
 @Module({
   imports: [
@@ -51,7 +53,7 @@ import { Subscriber } from './modules/subscribers/subscriber.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),
-      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog, Member, Revision, Media, Topic, Subscriber],
+      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog, Member, Revision, Media, Topic, Subscriber, Translation],
       // 生产环境关闭 synchronize 以避免数据丢失，改用迁移；开发环境保留以方便迭代
       synchronize: process.env.NODE_ENV !== 'production',
       migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
@@ -78,6 +80,7 @@ import { Subscriber } from './modules/subscribers/subscriber.entity';
     SubscribersModule,
     BackupModule,
     SchedulerModule,
+    TranslationsModule,
   ],
   providers: [
     {

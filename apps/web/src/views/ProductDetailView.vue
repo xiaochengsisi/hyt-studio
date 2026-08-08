@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/client';
-import type { Product } from '@hyt/shared';
+import type { Product, HealthBadge } from '@hyt/shared';
 import MarkdownRenderer from '../components/MarkdownRenderer.vue';
 import ShareBar from '../components/ShareBar.vue';
 import Comments from '../components/Comments.vue';
@@ -13,6 +13,7 @@ import { getAnonId, getLikedSlugs, setLiked, fmtCount } from '../utils/anon-id';
 const route = useRoute();
 const product = ref<Product | null>(null);
 const related = ref<Product[]>([]);
+const badges = ref<HealthBadge[]>([]);
 const error = ref('');
 const liked = ref(false);
 const likeCount = ref(0);
@@ -53,6 +54,8 @@ async function load() {
     });
     // 相关项目（按标签重合度），失败不影响主流程
     related.value = await api.getRelatedProducts(slug).catch(() => []);
+    // 健康度徽章（基于 GitHub 数据计算），失败不影响主流程
+    badges.value = (await api.getHealthBadges(slug).catch(() => ({ badges: [] }))).badges;
   } catch (e: any) {
     error.value = e.message || 'repo not found';
   }
@@ -130,6 +133,17 @@ function fmtDate(s?: string): string {
             </div>
           </div>
           <p class="dh-tagline">{{ product.tagline }}</p>
+          <div v-if="badges.length" class="health-row">
+            <span
+              v-for="b in badges"
+              :key="b.key + b.label"
+              class="health-badge"
+              :class="`tone-${b.tone}`"
+            >
+              <span v-if="b.icon" class="hb-icon">{{ b.icon }}</span>
+              <span>{{ b.label }}</span>
+            </span>
+          </div>
         </div>
 
         <!-- GitHub 数据统计 -->
@@ -319,6 +333,58 @@ function fmtDate(s?: string): string {
   color: var(--text-muted);
   line-height: 1.7;
   margin: 18px 0 0;
+}
+
+.health-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.health-badge .hb-icon {
+  font-size: 11px;
+}
+
+.health-badge.tone-green {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.health-badge.tone-blue {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.health-badge.tone-yellow {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.health-badge.tone-red {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.health-badge.tone-gray {
+  color: var(--text-muted);
+  background: var(--bg-soft);
 }
 
 /* GitHub 数据统计 */

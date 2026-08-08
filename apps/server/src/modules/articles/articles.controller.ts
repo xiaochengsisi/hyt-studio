@@ -18,8 +18,14 @@ export class ArticlesController {
 
   @Public()
   @Get('slug/:slug')
-  bySlug(@Param('slug') slug: string): Promise<Article> {
-    return this.articlesService.findBySlug(slug, true);
+  bySlug(
+    @Param('slug') slug: string,
+    @Query('lang') lang: string | undefined,
+    @Req() req: any,
+  ): Promise<Article> {
+    // 优先使用 ?lang= 参数，否则从 Accept-Language 头解析主语言
+    const locale = lang || parseAcceptLanguage(req.headers['accept-language']);
+    return this.articlesService.findBySlug(slug, true, locale);
   }
 
   @Get('admin')
@@ -52,4 +58,22 @@ export class ArticlesController {
   remove(@Param('id') id: number): Promise<void> {
     return this.articlesService.remove(id);
   }
+}
+
+/**
+ * 解析 Accept-Language 头，取首选语言并规范化为 locale（如 en-US / zh-CN）。
+ * 仅返回符合 `xx` 或 `xx-XX` 格式的语言代码；否则返回 undefined。
+ */
+function parseAcceptLanguage(header?: string): string | undefined {
+  if (!header) return undefined;
+  const first = header.split(',')[0]?.trim();
+  if (!first) return undefined;
+  // 形如 "zh-CN,zh;q=0.9" → 取分号前
+  const raw = first.split(';')[0].trim();
+  if (!raw) return undefined;
+  const parts = raw.split('-');
+  if (parts.length === 1) {
+    return parts[0].toLowerCase();
+  }
+  return `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
 }

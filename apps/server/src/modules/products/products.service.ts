@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
-import { Paginated, Product } from '@hyt/shared';
+import { HealthBadge, Paginated, Product } from '@hyt/shared';
 import { Product as ProductEntity } from './product.entity';
 import { ProductLike } from './product-like.entity';
 import { RevisionsService } from '../revisions/revisions.service';
 import { WebhookService } from '../webhook/webhook.service';
+import { HealthService } from './health.service';
+import { TranslationsService } from '../translations/translations.service';
 
 export interface QueryProducts {
   page?: number;
@@ -28,6 +30,8 @@ export class ProductsService {
     private readonly likesRepo: Repository<ProductLike>,
     private readonly revisions: RevisionsService,
     private readonly webhook: WebhookService,
+    private readonly healthService: HealthService,
+    private readonly translations: TranslationsService,
   ) {}
 
   /** 简单内存去重：同 IP + 同产品 10 分钟内只计一次浏览 */
@@ -122,7 +126,7 @@ export class ProductsService {
     };
   }
 
-  async findBySlug(slug: string, onlyPublished = false, ip?: string): Promise<Product> {
+  async findBySlug(slug: string, onlyPublished = false, ip?: string, lang?: string): Promise<Product> {
     const where: FindOptionsWhere<ProductEntity> = { slug };
     if (onlyPublished) where.status = 'published';
     const entity = await this.repo.findOne({ where });
@@ -138,7 +142,19 @@ export class ProductsService {
         entity.viewCount += 1;
       }
     }
-    return this.toDto(entity);
+    const dto = this.toDto(entity);
+    // 多语言：若指定 lang 且存在翻译，覆盖对应字段
+    if (lang) {
+      const t = await this.translations.get('product', entity.id, lang);
+      if (t && Object.keys(t).length) {
+        for (const k of ['name', 'tagline', 'description', 'content']) {
+          if (typeof t[k] === 'string' && t[k]!.length) {
+            (dto as any)[k] = t[k];
+          }
+        }
+      }
+    }
+    return dto;
   }
 
   /** 匿名点赞：按 anonId 去重，已点过则取消点赞 */
@@ -276,6 +292,13 @@ export class ProductsService {
       .sort((a, b) => b.overlap - a.overlap)
       .slice(0, limit)
       .map((x) => this.toDto(x.c));
+  }
+
+  /** 计算产品健康度徽章（基于已同步的 GitHub 数据） */
+  async computeHealth(slug: string): Promise<HealthBadge[]> {
+    const p = await this.repo.findOne({ where: { slug, status: 'published' as any } });
+    if (!p) return [];
+    return this.healthService.compute(p);
   }
 
   /** 批量操作：发布 / 草稿 / 归档 / 删除（软删除） */

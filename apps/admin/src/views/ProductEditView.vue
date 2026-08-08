@@ -6,7 +6,16 @@ import ImageUploader from '../components/ImageUploader.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import ScreenshotsUploader from '../components/ScreenshotsUploader.vue';
 import RevisionsPanel from '../components/RevisionsPanel.vue';
+import TranslationsPanel from '../components/TranslationsPanel.vue';
 import type { Product } from '@hyt/shared';
+
+/** 产品可翻译字段定义 */
+const translationFields = [
+  { key: 'name', label: '名称' },
+  { key: 'tagline', label: '一句话简介' },
+  { key: 'description', label: '项目简介', multiline: true },
+  { key: 'content', label: '详细介绍', multiline: true },
+];
 
 const route = useRoute();
 const router = useRouter();
@@ -295,6 +304,7 @@ async function syncGithub() {
     </form>
 
     <RevisionsPanel v-if="isEdit" type="product" :entity-id="id" />
+    <TranslationsPanel v-if="isEdit" type="product" :entity-id="id" :fields="translationFields" />
   </div>
 </template>
 
