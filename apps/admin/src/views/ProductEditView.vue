@@ -5,6 +5,7 @@ import { adminApi } from '../api/client';
 import ImageUploader from '../components/ImageUploader.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import ScreenshotsUploader from '../components/ScreenshotsUploader.vue';
+import RevisionsPanel from '../components/RevisionsPanel.vue';
 import type { Product } from '@hyt/shared';
 
 const route = useRoute();
@@ -33,6 +34,7 @@ const form = reactive<Partial<Product>>({
   status: 'draft',
   featured: false,
   sortOrder: 0,
+  scheduledAt: '',
   seoTitle: '',
   seoDescription: '',
   seoKeywords: '',
@@ -276,10 +278,23 @@ async function syncGithub() {
         <input class="input" type="number" v-model.number="form.sortOrder" style="max-width: 160px" />
       </div>
 
+      <div class="field">
+        <label class="label">定时发布</label>
+        <input
+          class="input"
+          type="datetime-local"
+          v-model="form.scheduledAt"
+          style="max-width: 280px"
+        />
+        <small class="muted">留空则按上方状态发布；填入未来时间并保存为草稿后，到点自动发布。</small>
+      </div>
+
       <button class="button button-primary" type="submit" :disabled="saving">
         {{ saving ? '保存中…' : '保存' }}
       </button>
     </form>
+
+    <RevisionsPanel v-if="isEdit" type="product" :entity-id="id" />
   </div>
 </template>
 

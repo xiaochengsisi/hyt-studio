@@ -53,4 +53,21 @@ export class S3Storage implements StoragePort {
     const url = this.publicBase ? `${this.publicBase}/${filename}` : `https://${this.bucket}.s3.amazonaws.com/${filename}`;
     return { url, filename };
   }
+
+  async delete(filename: string): Promise<void> {
+    try {
+      const sdk = require('@aws-sdk/client-s3');
+      const client = new sdk.S3Client({
+        region: process.env.S3_REGION,
+        endpoint: process.env.S3_ENDPOINT,
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY || '',
+          secretAccessKey: process.env.S3_SECRET_KEY || '',
+        },
+      });
+      await client.send(new sdk.DeleteObjectCommand({ Bucket: this.bucket, Key: filename }));
+    } catch {
+      /* best-effort */
+    }
+  }
 }

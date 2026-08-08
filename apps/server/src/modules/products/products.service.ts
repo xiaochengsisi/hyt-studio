@@ -4,6 +4,7 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { Paginated, Product } from '@hyt/shared';
 import { Product as ProductEntity } from './product.entity';
 import { ProductLike } from './product-like.entity';
+import { RevisionsService } from '../revisions/revisions.service';
 
 export interface QueryProducts {
   page?: number;
@@ -24,6 +25,7 @@ export class ProductsService {
     private readonly repo: Repository<ProductEntity>,
     @InjectRepository(ProductLike)
     private readonly likesRepo: Repository<ProductLike>,
+    private readonly revisions: RevisionsService,
   ) {}
 
   /** 简单内存去重：同 IP + 同产品 10 分钟内只计一次浏览 */
@@ -48,6 +50,7 @@ export class ProductsService {
       status: e.status,
       featured: e.featured,
       sortOrder: e.sortOrder,
+      scheduledAt: e.scheduledAt,
       viewCount: e.viewCount,
       likeCount: e.likeCount,
       language: e.language,
@@ -195,19 +198,23 @@ export class ProductsService {
     if (found) throw new ConflictException(`slug「${slug}」已被占用`);
   }
 
-  async create(data: Partial<ProductEntity>): Promise<Product> {
+  async create(data: Partial<ProductEntity>, username?: string): Promise<Product> {
     await this.assertSlugUnique(data.slug);
     const entity = this.repo.create(data);
     const saved = await this.repo.save(entity);
-    return this.toDto(saved);
+    const dto = this.toDto(saved);
+    await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    return dto;
   }
 
-  async update(id: number, data: Partial<ProductEntity>): Promise<Product> {
+  async update(id: number, data: Partial<ProductEntity>, username?: string): Promise<Product> {
     await this.assertSlugUnique(data.slug, id);
     const entity = await this.findById(id);
     Object.assign(entity, data);
     const saved = await this.repo.save(entity);
-    return this.toDto(saved);
+    const dto = this.toDto(saved);
+    await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    return dto;
   }
 
   async remove(id: number): Promise<void> {

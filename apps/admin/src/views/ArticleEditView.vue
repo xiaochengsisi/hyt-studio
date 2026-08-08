@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { adminApi } from '../api/client';
 import ImageUploader from '../components/ImageUploader.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
+import RevisionsPanel from '../components/RevisionsPanel.vue';
 import type { Article } from '@hyt/shared';
 
 const route = useRoute();
@@ -22,6 +23,7 @@ const form = reactive<Partial<Article>>({
   coverUrl: '',
   tags: '',
   status: 'draft',
+  scheduledAt: '',
   seoTitle: '',
   seoDescription: '',
   seoKeywords: '',
@@ -185,6 +187,17 @@ async function generateSeo() {
         <input class="input" v-model="form.seoKeywords" placeholder="留空则用标签" />
       </div>
 
+      <div class="field">
+        <label class="label">定时发布</label>
+        <input
+          class="input"
+          type="datetime-local"
+          v-model="form.scheduledAt"
+          style="max-width: 280px"
+        />
+        <small class="muted">留空则按上方按钮发布；填入未来时间并保存为草稿后，到点自动发布。</small>
+      </div>
+
       <div class="btn-row">
         <button class="button button-primary" type="submit" :disabled="saving">
           {{ saving ? '保存中…' : '存为草稿' }}
@@ -194,6 +207,8 @@ async function generateSeo() {
         </button>
       </div>
     </form>
+
+    <RevisionsPanel v-if="isEdit" type="article" :entity-id="id" />
   </div>
 </template>
 

@@ -9,6 +9,7 @@ import type {
   SiteStats,
   ActivityItem,
   Member,
+  Topic,
 } from '@hyt/shared';
 
 const BASE = '/api';
@@ -78,4 +79,20 @@ export const api = {
 
   // 团队成员（前台 /team）
   getMembers: () => request<Member[]>('/members'),
+
+  // 专题（策展集合）
+  getTopics: () => request<Topic[]>('/topics'),
+  getTopic: (slug: string) => request<Topic>(`/topics/slug/${slug}`),
+
+  // Newsletter 订阅
+  subscribe: (email: string) =>
+    request<{ pending: boolean }>('/subscribers/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  unsubscribe: (email: string) =>
+    request<void>('/subscribers/unsubscribe', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
 };

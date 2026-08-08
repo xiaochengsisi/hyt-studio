@@ -94,6 +94,20 @@ export class SiteConfig {
   @Column({ nullable: true })
   giscusCategoryId?: string;
 
+  /** SMTP 邮件配置（用于 Newsletter / 通知，密码仅在 admin 上下文返回） */
+  @Column({ nullable: true })
+  smtpHost?: string;
+  @Column({ nullable: true })
+  smtpPort?: number;
+  @Column({ nullable: true })
+  smtpSecure?: boolean;
+  @Column({ nullable: true })
+  smtpUser?: string;
+  @Column({ type: 'text', nullable: true })
+  smtpPass?: string;
+  @Column({ nullable: true })
+  smtpFrom?: string;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: string;
 

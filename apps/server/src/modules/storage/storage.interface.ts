@@ -9,6 +9,8 @@ export interface StoredFile {
 export interface StoragePort {
   /** 保存文件，返回可访问 URL 与文件名 */
   save(file: { buffer: Buffer; originalname: string }): Promise<StoredFile>;
+  /** 删除文件（按保存时返回的 filename / key）。失败应静默（best-effort）。 */
+  delete(filename: string): Promise<void>;
 }
 
 export const STORAGE_PORT = Symbol('STORAGE_PORT');

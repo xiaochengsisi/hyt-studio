@@ -47,6 +47,13 @@ export class SiteConfigService {
       giscusRepoId: e.giscusRepoId,
       giscusCategory: e.giscusCategory,
       giscusCategoryId: e.giscusCategoryId,
+      smtpHost: e.smtpHost,
+      smtpPort: e.smtpPort,
+      smtpSecure: e.smtpSecure,
+      smtpUser: e.smtpUser,
+      // SMTP 密码仅在 admin 上下文返回，公开接口不暴露
+      smtpPass: withSecrets ? e.smtpPass : undefined,
+      smtpFrom: e.smtpFrom,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     };

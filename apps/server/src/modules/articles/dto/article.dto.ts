@@ -42,6 +42,11 @@ export class CreateArticleDto {
   @IsEnum(ArticleStatus)
   status?: ArticleStatus;
 
+  @ApiProperty({ required: false, description: '定时发布时间（ISO），到达后自动发布' })
+  @IsOptional()
+  @IsString()
+  scheduledAt?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

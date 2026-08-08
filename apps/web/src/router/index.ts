@@ -26,6 +26,16 @@ export const router = createRouter({
       component: () => import('../views/BlogDetailView.vue'),
     },
     {
+      path: '/topics',
+      name: 'topics',
+      component: () => import('../views/TopicsView.vue'),
+    },
+    {
+      path: '/topics/:slug',
+      name: 'topic-detail',
+      component: () => import('../views/TopicDetailView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       component: () => import('../views/AboutView.vue'),

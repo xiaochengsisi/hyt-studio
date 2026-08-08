@@ -26,6 +26,10 @@ export class Article {
   @Column({ default: 'draft' })
   status: 'published' | 'draft';
 
+  /** 定时发布时间：到达后调度器自动把 draft → published */
+  @Column({ type: 'datetime', nullable: true })
+  scheduledAt?: string;
+
   @Column({ type: 'datetime', nullable: true })
   publishedAt?: string;
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 import { randomBytes } from 'crypto';
 import { StoragePort, StoredFile } from './storage.interface';
@@ -16,5 +16,14 @@ export class LocalStorage implements StoragePort {
     writeFileSync(join(this.dir, filename), file.buffer);
     const base = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     return { url: `${base}/uploads/${filename}`, filename };
+  }
+
+  async delete(filename: string): Promise<void> {
+    try {
+      const safe = join(this.dir, filename.replace(/^[/\\]+/, ''));
+      if (existsSync(safe)) unlinkSync(safe);
+    } catch {
+      /* best-effort */
+    }
   }
 }

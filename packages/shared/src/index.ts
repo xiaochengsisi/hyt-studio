@@ -35,6 +35,13 @@ export interface SiteConfig {
   giscusRepoId?: string;
   giscusCategory?: string;
   giscusCategoryId?: string;
+  /** SMTP 邮件配置（Newsletter / 通知），smtpPass 仅 admin 可读 */
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFrom?: string;
   content?: PageContent;
   createdAt: string;
   updatedAt: string;
@@ -98,6 +105,8 @@ export interface Product {
   status: 'published' | 'draft' | 'archived';
   featured: boolean;
   sortOrder: number;
+  /** 定时发布时间（到达后自动发布） */
+  scheduledAt?: string;
   /** 浏览量 */
   viewCount: number;
   /** 点赞数 */
@@ -133,6 +142,8 @@ export interface Article {
   tags?: string;
   status: 'published' | 'draft';
   publishedAt?: string;
+  /** 定时发布时间（到达后自动发布） */
+  scheduledAt?: string;
   /** SEO 标题（留空则用 title） */
   seoTitle?: string;
   /** SEO 描述（留空则用 summary） */
@@ -279,6 +290,67 @@ export interface Member {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 内容修订历史快照（产品 / 文章每次保存留档，可回滚） */
+export interface Revision {
+  id: number;
+  /** 实体类型：product / article */
+  entityType: 'product' | 'article';
+  /** 实体 ID */
+  entityId: number;
+  /** 快照内容（实体完整字段 JSON） */
+  snapshot: Record<string, any>;
+  /** 操作人 */
+  username?: string;
+  createdAt: string;
+}
+
+/** 媒体库文件记录 */
+export interface Media {
+  id: number;
+  url: string;
+  /** 原始文件名 */
+  filename: string;
+  mimetype?: string;
+  size?: number;
+  createdAt: string;
+}
+
+/** 专题（策展集合，关联多个产品） */
+export interface Topic {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  sortOrder: number;
+  /** 专题下关联的产品（详情接口返回） */
+  products?: Product[];
+  /** 关联产品 ID 列表（编辑接口接收） */
+  productIds?: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Newsletter 订阅者 */
+export interface Subscriber {
+  id: number;
+  email: string;
+  /** 是否已确认邮箱 */
+  confirmed: boolean;
+  createdAt: string;
+}
+
+/** 数据备份导出包 */
+export interface BackupPayload {
+  version: number;
+  exportedAt: string;
+  siteConfig?: Partial<SiteConfig>;
+  products?: Product[];
+  articles?: Article[];
+  members?: Member[];
+  topics?: Topic[];
 }
 
 /** 批量操作请求 */

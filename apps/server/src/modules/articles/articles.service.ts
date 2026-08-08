@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { Article as ArticleDto, Paginated } from '@hyt/shared';
 import { Article as ArticleEntity } from './article.entity';
+import { RevisionsService } from '../revisions/revisions.service';
 
 export interface QueryArticles {
   page?: number;
@@ -16,6 +17,7 @@ export class ArticlesService {
   constructor(
     @InjectRepository(ArticleEntity)
     private readonly repo: Repository<ArticleEntity>,
+    private readonly revisions: RevisionsService,
   ) {}
 
   private toDto(e: ArticleEntity): ArticleDto {
@@ -29,6 +31,7 @@ export class ArticlesService {
       tags: e.tags,
       status: e.status,
       publishedAt: e.publishedAt,
+      scheduledAt: e.scheduledAt,
       seoTitle: e.seoTitle,
       seoDescription: e.seoDescription,
       seoKeywords: e.seoKeywords,
@@ -79,19 +82,23 @@ export class ArticlesService {
     if (found) throw new ConflictException(`slug「${slug}」已被占用`);
   }
 
-  async create(data: Partial<ArticleEntity>): Promise<ArticleDto> {
+  async create(data: Partial<ArticleEntity>, username?: string): Promise<ArticleDto> {
     await this.assertSlugUnique(data.slug);
     const entity = this.repo.create(data);
     const saved = await this.repo.save(entity);
-    return this.toDto(saved);
+    const dto = this.toDto(saved);
+    await this.revisions.saveSnapshot('article', saved.id, dto, username);
+    return dto;
   }
 
-  async update(id: number, data: Partial<ArticleEntity>): Promise<ArticleDto> {
+  async update(id: number, data: Partial<ArticleEntity>, username?: string): Promise<ArticleDto> {
     await this.assertSlugUnique(data.slug, id);
     const entity = await this.findById(id);
     Object.assign(entity, data);
     const saved = await this.repo.save(entity);
-    return this.toDto(saved);
+    const dto = this.toDto(saved);
+    await this.revisions.saveSnapshot('article', saved.id, dto, username);
+    return dto;
   }
 
   async remove(id: number): Promise<void> {

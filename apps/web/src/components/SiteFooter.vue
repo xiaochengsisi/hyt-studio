@@ -1,8 +1,33 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { api } from '../api/client';
 import type { SiteConfig } from '@hyt/shared';
 defineProps<{ site: SiteConfig }>();
 const { t } = useI18n();
+
+const email = ref('');
+const state = ref<'idle' | 'loading' | 'done' | 'error'>('idle');
+const message = ref('');
+
+async function onSubscribe() {
+  if (!email.value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+    state.value = 'error';
+    message.value = '请输入有效的邮箱地址';
+    return;
+  }
+  state.value = 'loading';
+  message.value = '';
+  try {
+    const r = await api.subscribe(email.value);
+    state.value = 'done';
+    message.value = r.pending ? '确认邮件已发送，请查收点击确认。' : '你已订阅，感谢关注！';
+    email.value = '';
+  } catch (e: any) {
+    state.value = 'error';
+    message.value = e.message || '订阅失败';
+  }
+}
 </script>
 
 <template>
@@ -33,6 +58,24 @@ const { t } = useI18n();
           <div class="f-head">{{ t('footer.contact') }}</div>
           <a v-if="site.github" :href="site.github" target="_blank" rel="noopener">GitHub ↗</a>
           <a v-if="site.email" :href="`mailto:${site.email}`">{{ site.email }}</a>
+        </div>
+
+        <div class="footer-col">
+          <div class="f-head">订阅更新</div>
+          <p class="ns-desc">新项目 / 新版本 / 新文章，第一时间送达。</p>
+          <form class="ns-form" @submit.prevent="onSubscribe">
+            <input
+              type="email"
+              class="ns-input"
+              v-model="email"
+              placeholder="you@example.com"
+              :disabled="state === 'loading'"
+            />
+            <button class="ns-btn" type="submit" :disabled="state === 'loading'">
+              {{ state === 'loading' ? '…' : '订阅' }}
+            </button>
+          </form>
+          <div v-if="message" class="ns-msg" :class="state">{{ message }}</div>
         </div>
       </div>
 
@@ -73,7 +116,7 @@ const { t } = useI18n();
 
 .footer-top {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr 1fr 1.4fr;
   gap: 40px;
   padding-bottom: 40px;
 }
@@ -184,5 +227,64 @@ const { t } = useI18n();
     grid-template-columns: 1fr;
     gap: 28px;
   }
+}
+
+.ns-desc {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.ns-form {
+  display: flex;
+  gap: 6px;
+}
+
+.ns-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ns-input:focus {
+  border-color: var(--accent);
+}
+
+.ns-btn {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.ns-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ns-msg {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.ns-msg.done {
+  color: #047857;
+}
+
+.ns-msg.error {
+  color: #ef4444;
 }
 </style>

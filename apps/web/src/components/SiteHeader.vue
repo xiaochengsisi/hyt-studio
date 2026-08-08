@@ -42,6 +42,7 @@ function onToggleTheme() {
 
       <nav class="nav">
         <router-link to="/products" class="nav-link">{{ t('nav.products') }}</router-link>
+        <router-link to="/topics" class="nav-link">专题</router-link>
         <router-link to="/blog" class="nav-link">{{ t('nav.blog') }}</router-link>
         <router-link to="/team" class="nav-link">团队</router-link>
         <router-link to="/about" class="nav-link">{{ t('nav.about') }}</router-link>

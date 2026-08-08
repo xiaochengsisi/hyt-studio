@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Article, BulkActionResult, BulkActionPayload, Paginated } from '@hyt/shared';
 import { ArticlesService, QueryArticles } from './articles.service';
@@ -39,13 +39,13 @@ export class ArticlesController {
   }
 
   @Post('admin')
-  create(@Body() data: CreateArticleDto): Promise<Article> {
-    return this.articlesService.create(data as any);
+  create(@Body() data: CreateArticleDto, @Req() req: any): Promise<Article> {
+    return this.articlesService.create(data as any, req?.user?.username);
   }
 
   @Put('admin/:id')
-  update(@Param('id') id: number, @Body() data: UpdateArticleDto): Promise<Article> {
-    return this.articlesService.update(id, data as any);
+  update(@Param('id') id: number, @Body() data: UpdateArticleDto, @Req() req: any): Promise<Article> {
+    return this.articlesService.update(id, data as any, req?.user?.username);
   }
 
   @Delete('admin/:id')

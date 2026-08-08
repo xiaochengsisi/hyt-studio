@@ -10,13 +10,17 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { extname } from 'path';
 import { STORAGE_PORT, StoragePort } from '../storage/storage.interface';
+import { MediaService } from '../media/media.service';
 
 const ALLOWED = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico'];
 
 @ApiTags('uploads')
 @Controller('api/uploads')
 export class UploadsController {
-  constructor(@Inject(STORAGE_PORT) private readonly storage: StoragePort) {}
+  constructor(
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    private readonly mediaService: MediaService,
+  ) {}
 
   @Post()
   @UseInterceptors(
@@ -38,6 +42,14 @@ export class UploadsController {
     const result = await this.storage.save({
       buffer: file.buffer,
       originalname: file.originalname,
+    });
+    // 记录到媒体库，便于后台统一管理 / 删除
+    await this.mediaService.record({
+      url: result.url,
+      filename: file.originalname,
+      storageKey: result.filename,
+      mimetype: file.mimetype,
+      size: file.size,
     });
     return { url: result.url };
   }

@@ -92,13 +92,13 @@ export class ProductsController {
   }
 
   @Post('admin')
-  create(@Body() data: CreateProductDto): Promise<Product> {
-    return this.productsService.create(data as any);
+  create(@Body() data: CreateProductDto, @Req() req: any): Promise<Product> {
+    return this.productsService.create(data as any, req?.user?.username);
   }
 
   @Put('admin/:id')
-  update(@Param('id') id: number, @Body() data: UpdateProductDto): Promise<Product> {
-    return this.productsService.update(id, data as any);
+  update(@Param('id') id: number, @Body() data: UpdateProductDto, @Req() req: any): Promise<Product> {
+    return this.productsService.update(id, data as any, req?.user?.username);
   }
 
   @Delete('admin/:id')
