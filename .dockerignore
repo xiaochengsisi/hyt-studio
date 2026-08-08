@@ -1,0 +1,50 @@
+# 依赖与缓存
+node_modules/
+**/node_modules/
+.npm/
+.pnpm-store/
+
+# 构建产物（容器内重新构建，避免宿主机产物污染）
+dist/
+dist-ssr/
+**/dist/
+*.local
+
+# 运行时数据（绝不打入镜像）
+data/
+**/data/
+*.db
+*.db-journal
+uploads/
+**/uploads/
+
+# 环境变量（通过 compose / -e 注入，不打入镜像）
+.env
+.env.*
+!.env.example
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+
+# Git 与编辑器
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store/
+
+# 文档与 CI（运行时不需要）
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+DEPLOY.md
+docs/
+.github/
+
+# 测试与工具配置
+**/*.spec.ts
+**/*.test.ts
+coverage/
+.eslintcache
