@@ -31,6 +31,9 @@ export const api = {
     pageSize?: number;
     keyword?: string;
     tag?: string;
+    language?: string;
+    category?: string;
+    sort?: 'default' | 'hot' | 'views' | 'likes' | 'stars' | 'newest';
   }) => {
     const q = new URLSearchParams();
     if (params?.feature) q.set('feature', 'true');
@@ -38,12 +41,22 @@ export const api = {
     if (params?.pageSize) q.set('pageSize', String(params.pageSize));
     if (params?.keyword) q.set('keyword', params.keyword);
     if (params?.tag) q.set('tag', params.tag);
+    if (params?.language) q.set('language', params.language);
+    if (params?.category) q.set('category', params.category);
+    if (params?.sort) q.set('sort', params.sort);
     const s = q.toString();
     return request<Paginated<Product>>(`/products${s ? '?' + s : ''}`);
   },
   getProduct: (slug: string) => request<Product>(`/products/slug/${slug}`),
   getRelatedProducts: (slug: string) => request<Product[]>(`/products/slug/${slug}/related`),
   getProductsTags: () => request<{ name: string; count: number }[]>('/products/tags'),
+  getProductsLanguages: () => request<{ name: string; count: number }[]>('/products/languages'),
+  getHotProducts: () => request<Product[]>('/products/hot'),
+  toggleLike: (slug: string, anonId: string) =>
+    request<{ liked: boolean; likeCount: number }>(`/products/slug/${slug}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ anonId }),
+    }),
   getArticles: (params?: { page?: number; pageSize?: number; keyword?: string }) => {
     const q = new URLSearchParams();
     if (params?.page) q.set('page', String(params.page));

@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProductsModule } from './modules/products/products.module';
+import { OgModule } from './modules/og/og.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { SiteConfigModule } from './modules/site-config/site-config.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -22,6 +23,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { HealthModule } from './modules/health/health.module';
 import { User } from './modules/users/user.entity';
 import { Product } from './modules/products/product.entity';
+import { ProductLike } from './modules/products/product-like.entity';
 import { Article } from './modules/articles/article.entity';
 import { SiteConfig } from './modules/site-config/site-config.entity';
 import { Submission } from './modules/submissions/submission.entity';
@@ -34,7 +36,7 @@ import { Submission } from './modules/submissions/submission.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),
-      entities: [User, Product, Article, SiteConfig, Submission, AuditLog],
+      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog],
       // 生产环境关闭 synchronize 以避免数据丢失，改用迁移；开发环境保留以方便迭代
       synchronize: process.env.NODE_ENV !== 'production',
       migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
@@ -44,6 +46,7 @@ import { Submission } from './modules/submissions/submission.entity';
     UsersModule,
     AuthModule,
     ProductsModule,
+    OgModule,
     ArticlesModule,
     SiteConfigModule,
     UploadsModule,

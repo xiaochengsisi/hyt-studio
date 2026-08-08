@@ -24,6 +24,10 @@ const form = reactive<Partial<SiteConfig>>({
   aiBaseUrl: '',
   aiApiKey: '',
   aiModel: '',
+  giscusRepo: '',
+  giscusRepoId: '',
+  giscusCategory: '',
+  giscusCategoryId: '',
 });
 
 const saving = ref(false);
@@ -215,6 +219,29 @@ async function onSubmit() {
           autocomplete="off"
         />
         <span class="field-hint">仅后台可读，不会暴露给前台。留空表示不启用 AI 功能。</span>
+      </div>
+
+      <div class="section-divider">评论系统（Giscus · 基于 GitHub Discussions）</div>
+      <span class="field-hint" style="display:block;margin-bottom:12px">
+        在 <a href="https://giscus.app" target="_blank" rel="noopener">giscus.app</a> 填入仓库后获取以下配置。全部留空则不显示评论。
+      </span>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label">仓库（owner/repo）</label>
+          <input class="input" v-model="form.giscusRepo" placeholder="xiaochengsisi/hyt-studio" />
+        </div>
+        <div class="field">
+          <label class="label">仓库 ID</label>
+          <input class="input" v-model="form.giscusRepoId" placeholder="R_kgDO..." />
+        </div>
+        <div class="field">
+          <label class="label">Discussion 分类</label>
+          <input class="input" v-model="form.giscusCategory" placeholder="Announcements" />
+        </div>
+        <div class="field">
+          <label class="label">分类 ID</label>
+          <input class="input" v-model="form.giscusCategoryId" placeholder="DIC_kwDO..." />
+        </div>
       </div>
 
       <button class="button button-primary" type="submit" :disabled="saving">

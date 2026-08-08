@@ -30,6 +30,11 @@ export interface SiteConfig {
   aiApiKey?: string;
   /** AI 模型名（如 deepseek-chat / glm-4-flash / gpt-4o-mini） */
   aiModel?: string;
+  /** Giscus 评论配置（基于 GitHub Discussions，前端渲染评论挂件） */
+  giscusRepo?: string;
+  giscusRepoId?: string;
+  giscusCategory?: string;
+  giscusCategoryId?: string;
   content?: PageContent;
   createdAt: string;
   updatedAt: string;
@@ -93,6 +98,21 @@ export interface Product {
   status: 'published' | 'draft' | 'archived';
   featured: boolean;
   sortOrder: number;
+  /** 浏览量 */
+  viewCount: number;
+  /** 点赞数 */
+  likeCount: number;
+  /** 主编程语言（GitHub 同步） */
+  language?: string;
+  /** 分类（手动） */
+  category?: string;
+  /** GitHub 同步数据 */
+  githubStars: number;
+  githubForks: number;
+  githubOpenIssues: number;
+  githubLicense?: string;
+  githubUpdatedAt?: string;
+  githubSyncedAt?: string;
   /** SEO 标题（留空则用 name） */
   seoTitle?: string;
   /** SEO 描述（留空则用 tagline/description） */

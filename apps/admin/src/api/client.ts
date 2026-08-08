@@ -53,6 +53,8 @@ export const adminApi = {
     request<Product>('/products/admin', { method: 'POST', body: JSON.stringify(data) }),
   updateProduct: (id: number, data: Partial<Product>) =>
     request<Product>(`/products/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  syncGithub: (id: number) =>
+    request<Product>(`/products/admin/${id}/sync-github`, { method: 'POST' }),
   deleteProduct: (id: number) =>
     request<void>(`/products/admin/${id}`, { method: 'DELETE' }),
   bulkProducts: (payload: BulkActionPayload) =>

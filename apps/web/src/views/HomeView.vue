@@ -3,22 +3,28 @@ import { onMounted, ref } from 'vue';
 import { api } from '../api/client';
 import type { Article, Product } from '@hyt/shared';
 import Skeleton from '../components/Skeleton.vue';
+import ProductCard from '../components/ProductCard.vue';
 import { resolveContent, type PageContent } from '../content';
 
 const products = ref<Product[]>([]);
+const hotProducts = ref<Product[]>([]);
 const articles = ref<Article[]>([]);
 const loading = ref(true);
 const content = ref<PageContent>(resolveContent());
 
 onMounted(async () => {
   try {
-    const [cfg, all, latest] = await Promise.all([
+    const [cfg, all, hot, latest] = await Promise.all([
       api.getSiteConfig(),
       api.getProducts(),
+      api.getHotProducts().catch(() => [] as Product[]),
       api.getArticles({ pageSize: 3 }).catch(() => ({ items: [] as Article[], total: 0 })),
     ]);
     content.value = resolveContent(cfg.content);
     products.value = all.items;
+    // 热门项目排除与首屏精选重复的，最多取 4 个
+    const featuredIds = new Set(all.items.slice(0, 4).map((p) => p.id));
+    hotProducts.value = hot.filter((p) => !featuredIds.has(p.id)).slice(0, 4);
     articles.value = latest.items;
   } finally {
     loading.value = false;
@@ -92,6 +98,25 @@ function articleDate(s?: string): string {
         </router-link>
       </div>
       <div v-else class="empty">还没有项目。</div>
+    </div>
+  </section>
+
+  <!-- ============ 热门项目（综合浏览+点赞+star） ============ -->
+  <section v-if="hotProducts.length" class="section">
+    <div class="container">
+      <div class="section-head" v-reveal>
+        <div class="section-head-main">
+          <span class="section-eyebrow">热门</span>
+          <h2 class="section-title">社区最爱</h2>
+          <p class="section-sub">按浏览量、点赞与 GitHub Star 综合排序。</p>
+        </div>
+        <router-link to="/products?sort=hot" class="text-link">全部<span class="tl-arrow">→</span></router-link>
+      </div>
+      <div class="grid grid-products">
+        <div v-for="(p, i) in hotProducts" :key="p.id" v-reveal="`d-${(i % 4) + 1}`">
+          <ProductCard :product="p" />
+        </div>
+      </div>
     </div>
   </section>
 

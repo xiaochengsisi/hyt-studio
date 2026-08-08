@@ -50,6 +50,36 @@ export class Product {
   @Column({ default: 0 })
   sortOrder: number;
 
+  /** 浏览量（详情页访问计数） */
+  @Column({ default: 0 })
+  viewCount: number;
+
+  /** 点赞数（前台匿名点赞累计） */
+  @Column({ default: 0 })
+  likeCount: number;
+
+  /** 主编程语言（可由 GitHub 同步填充，用于筛选） */
+  @Column({ nullable: true })
+  language?: string;
+
+  /** 分类（手动选择，用于结构化筛选） */
+  @Column({ nullable: true })
+  category?: string;
+
+  /** GitHub 同步数据 */
+  @Column({ default: 0 })
+  githubStars: number;
+  @Column({ default: 0 })
+  githubForks: number;
+  @Column({ default: 0 })
+  githubOpenIssues: number;
+  @Column({ nullable: true })
+  githubLicense?: string;
+  @Column({ type: 'datetime', nullable: true })
+  githubUpdatedAt?: string;
+  @Column({ type: 'datetime', nullable: true })
+  githubSyncedAt?: string;
+
   /** SEO 标题（留空则用 name） */
   @Column({ nullable: true })
   seoTitle?: string;

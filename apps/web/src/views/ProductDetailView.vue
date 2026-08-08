@@ -5,12 +5,17 @@ import { api } from '../api/client';
 import type { Product } from '@hyt/shared';
 import MarkdownRenderer from '../components/MarkdownRenderer.vue';
 import ShareBar from '../components/ShareBar.vue';
+import Comments from '../components/Comments.vue';
 import { setSeo, setJsonLd } from '../composables/useSeo';
+import { getAnonId, getLikedSlugs, setLiked, fmtCount } from '../utils/anon-id';
 
 const route = useRoute();
 const product = ref<Product | null>(null);
 const related = ref<Product[]>([]);
 const error = ref('');
+const liked = ref(false);
+const likeCount = ref(0);
+const likeBusy = ref(false);
 
 async function load() {
   error.value = '';
@@ -21,10 +26,14 @@ async function load() {
     const slug = route.params.slug as string;
     product.value = await api.getProduct(slug);
     const p = product.value;
+    likeCount.value = p.likeCount;
+    liked.value = getLikedSlugs().has(slug);
     const seoTitle = p.seoTitle || p.name;
     const seoDesc = p.seoDescription || p.tagline || p.description;
     const seoKeywords = p.seoKeywords || p.tags || '';
-    setSeo(seoTitle, seoDesc, seoKeywords);
+    // 产品分享卡片图（绝对 URL，供社交平台抓取）
+    const ogImage = `${window.location.origin}/api/og/product/${slug}.png`;
+    setSeo(seoTitle, seoDesc, seoKeywords, ogImage);
     // 注入 SoftwareApplication 结构化数据（生成式引擎优化 GEO）
     setJsonLd('product', {
       '@context': 'https://schema.org',
@@ -39,11 +48,28 @@ async function load() {
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'CNY' },
       ...(p.repoUrl ? { codeRepository: p.repoUrl } : {}),
       ...(p.homepage ? { isAccessibleForFree: true } : {}),
+      ...(p.githubStars ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: '5', ratingCount: p.githubStars } } : {}),
     });
     // 相关项目（按标签重合度），失败不影响主流程
     related.value = await api.getRelatedProducts(slug).catch(() => []);
   } catch (e: any) {
     error.value = e.message || 'repo not found';
+  }
+}
+
+async function onLike() {
+  if (!product.value || likeBusy.value) return;
+  likeBusy.value = true;
+  const slug = product.value.slug;
+  try {
+    const res = await api.toggleLike(slug, getAnonId());
+    liked.value = res.liked;
+    likeCount.value = res.likeCount;
+    setLiked(slug, res.liked);
+  } catch {
+    /* ignore */
+  } finally {
+    likeBusy.value = false;
   }
 }
 
@@ -105,6 +131,36 @@ function fmtDate(s?: string): string {
           <p class="dh-tagline">{{ product.tagline }}</p>
         </div>
 
+        <!-- GitHub 数据统计 -->
+        <div v-if="product.githubStars || product.githubForks || product.language" class="card stats-card" v-reveal="'d-2'">
+          <div class="stats-grid">
+            <div class="stat-item" v-if="product.githubStars > 0">
+              <span class="stat-num">★ {{ fmtCount(product.githubStars) }}</span>
+              <span class="stat-label">Stars</span>
+            </div>
+            <div class="stat-item" v-if="product.githubForks > 0">
+              <span class="stat-num">{{ fmtCount(product.githubForks) }}</span>
+              <span class="stat-label">Forks</span>
+            </div>
+            <div class="stat-item" v-if="product.githubOpenIssues > 0">
+              <span class="stat-num">{{ fmtCount(product.githubOpenIssues) }}</span>
+              <span class="stat-label">Issues</span>
+            </div>
+            <div class="stat-item" v-if="product.language">
+              <span class="stat-num">{{ product.language }}</span>
+              <span class="stat-label">Language</span>
+            </div>
+            <div class="stat-item" v-if="product.githubLicense">
+              <span class="stat-num">{{ product.githubLicense }}</span>
+              <span class="stat-label">License</span>
+            </div>
+            <div class="stat-item" v-if="product.githubUpdatedAt">
+              <span class="stat-num">{{ fmtDate(product.githubUpdatedAt) }}</span>
+              <span class="stat-label">GitHub 更新</span>
+            </div>
+          </div>
+        </div>
+
         <div v-if="screenshotsList().length" class="card shots-card" v-reveal="'d-2'">
           <h2 class="bc-title">项目截图</h2>
           <div class="shots">
@@ -130,8 +186,19 @@ function fmtDate(s?: string): string {
           </div>
 
           <div class="detail-foot">
-            <span class="updated muted">更新于 {{ fmtDate(product.updatedAt) }}</span>
-            <ShareBar :title="product.name" />
+            <span class="updated muted">更新于 {{ fmtDate(product.updatedAt) }} · {{ fmtCount(product.viewCount) }} 次浏览</span>
+            <div class="foot-actions">
+              <button
+                class="like-btn"
+                :class="{ liked }"
+                :disabled="likeBusy"
+                @click="onLike"
+              >
+                <span class="like-icon">{{ liked ? '♥' : '♡' }}</span>
+                <span>{{ fmtCount(likeCount) }}</span>
+              </button>
+              <ShareBar :title="product.name" />
+            </div>
           </div>
         </div>
 
@@ -153,6 +220,12 @@ function fmtDate(s?: string): string {
               <span class="related-arrow">→</span>
             </router-link>
           </div>
+        </div>
+
+        <!-- 评论区（Giscus，基于 GitHub Discussions） -->
+        <div class="card related-card" v-reveal="'d-4'">
+          <h2 class="bc-title">评论</h2>
+          <Comments :mapping="`specific:${product.slug}`" />
         </div>
       </template>
 
@@ -242,6 +315,73 @@ function fmtDate(s?: string): string {
   color: var(--text-muted);
   line-height: 1.7;
   margin: 18px 0 0;
+}
+
+/* GitHub 数据统计 */
+.stats-card {
+  margin-bottom: 20px;
+  padding: 20px 28px;
+}
+
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-num {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* 点赞按钮 */
+.foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.like-btn:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.like-btn.liked {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.like-icon {
+  font-size: 16px;
 }
 
 /* 详情 */

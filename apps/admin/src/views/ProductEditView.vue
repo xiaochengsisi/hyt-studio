@@ -28,6 +28,8 @@ const form = reactive<Partial<Product>>({
   homepage: '',
   docsUrl: '',
   version: '',
+  language: '',
+  category: '',
   status: 'draft',
   featured: false,
   sortOrder: 0,
@@ -38,6 +40,7 @@ const form = reactive<Partial<Product>>({
 
 const saving = ref(false);
 const generating = ref(false);
+const syncing = ref(false);
 const error = ref('');
 const success = ref('');
 
@@ -121,6 +124,26 @@ async function generateSeo() {
     generating.value = false;
   }
 }
+
+/** 从 GitHub 同步仓库数据：stars/forks/语言/版本等 */
+async function syncGithub() {
+  if (!form.repoUrl) {
+    error.value = '请先填写 GitHub 仓库 URL';
+    return;
+  }
+  error.value = '';
+  success.value = '';
+  syncing.value = true;
+  try {
+    const p = await adminApi.syncGithub(id);
+    Object.assign(form, p);
+    success.value = `已同步 GitHub 数据（★ ${p.githubStars} · ${p.language || '—'})`;
+  } catch (e: any) {
+    error.value = e.message || '同步失败';
+  } finally {
+    syncing.value = false;
+  }
+}
 </script>
 
 <template>
@@ -180,6 +203,21 @@ async function generateSeo() {
           <label class="label">标签（逗号分隔）</label>
           <input class="input" v-model="form.tags" placeholder="web, 工具, 开源" />
         </div>
+        <div class="field">
+          <label class="label">编程语言</label>
+          <input class="input" v-model="form.language" placeholder="可由 GitHub 同步，也可手动填写" />
+        </div>
+        <div class="field">
+          <label class="label">分类</label>
+          <input class="input" v-model="form.category" placeholder="如：工具 / 框架 / 应用 / 库" />
+        </div>
+      </div>
+
+      <div v-if="isEdit" class="field">
+        <button class="button button-ghost" type="button" :disabled="syncing" @click="syncGithub">
+          {{ syncing ? '同步中…' : '↻ 从 GitHub 同步数据' }}
+        </button>
+        <small class="muted" style="margin-left: 10px">抓取 stars / forks / 语言 / license / 最新版本，自动填充。</small>
       </div>
 
       <div class="field">

@@ -84,6 +84,16 @@ export class SiteConfig {
   @Column({ nullable: true })
   aiModel?: string;
 
+  /** Giscus 评论配置（基于 GitHub Discussions） */
+  @Column({ nullable: true })
+  giscusRepo?: string;
+  @Column({ nullable: true })
+  giscusRepoId?: string;
+  @Column({ nullable: true })
+  giscusCategory?: string;
+  @Column({ nullable: true })
+  giscusCategoryId?: string;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: string;
 

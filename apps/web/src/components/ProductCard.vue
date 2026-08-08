@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from '@hyt/shared';
+import { fmtCount } from '../utils/anon-id';
 
 defineProps<{ product: Product }>();
 
@@ -16,19 +17,27 @@ function letterFor(name: string): string {
   <router-link :to="`/products/${product.slug}`" class="product-card">
     <div class="pc-head">
       <div class="icon-tile">{{ letterFor(product.name) }}</div>
-      <span class="pc-ver mono">v{{ product.version || '—' }}</span>
+      <span v-if="product.githubStars > 0" class="pc-star" title="GitHub Stars">
+        ★ {{ fmtCount(product.githubStars) }}
+      </span>
+      <span v-else class="pc-ver mono">v{{ product.version || '—' }}</span>
     </div>
 
     <h3 class="pc-name">{{ product.name }}</h3>
     <p class="pc-desc">{{ product.tagline }}</p>
 
     <div class="pc-tags">
+      <span v-if="product.language" class="tag tag-lang">{{ product.language }}</span>
       <span v-for="t in tagsList(product.tags)" :key="t" class="tag">{{ t }}</span>
     </div>
 
     <div class="pc-foot">
-      <span class="pc-link">查看项目</span>
-      <span class="pc-arrow">→</span>
+      <span class="pc-stats mono">
+        <span v-if="product.githubStars > 0">★ {{ fmtCount(product.githubStars) }}</span>
+        <span v-if="product.viewCount > 0">👁 {{ fmtCount(product.viewCount) }}</span>
+        <span v-if="product.likeCount > 0">♡ {{ fmtCount(product.likeCount) }}</span>
+      </span>
+      <span class="pc-link">查看项目 →</span>
     </div>
   </router-link>
 </template>
@@ -60,6 +69,19 @@ function letterFor(name: string): string {
 .pc-ver {
   font-size: 12px;
   color: var(--text-faint);
+}
+
+.pc-star {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tag-lang {
+  background: var(--bg-soft);
+  color: var(--green-deep);
+  border: 1px solid var(--line);
 }
 
 .pc-name {
@@ -94,6 +116,13 @@ function letterFor(name: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.pc-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .pc-link {

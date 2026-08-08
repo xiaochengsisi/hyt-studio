@@ -43,6 +43,10 @@ export class SiteConfigService {
       // API Key 仅在 admin 上下文返回，公开接口不暴露
       aiApiKey: withSecrets ? e.aiApiKey : undefined,
       aiModel: e.aiModel,
+      giscusRepo: e.giscusRepo,
+      giscusRepoId: e.giscusRepoId,
+      giscusCategory: e.giscusCategory,
+      giscusCategoryId: e.giscusCategoryId,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     };

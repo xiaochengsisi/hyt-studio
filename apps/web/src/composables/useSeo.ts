@@ -36,7 +36,7 @@ const setOg = (property: string, content?: string) => setPropertyMeta('property'
 const setTwitter = (name: string, content?: string) => setPropertyMeta('name', name, content);
 
 /** 设置页面标题与描述（SEO / 分享卡片），由各页面按需调用 */
-export function setSeo(title?: string, description?: string, keywords?: string) {
+export function setSeo(title?: string, description?: string, keywords?: string, image?: string) {
   document.title = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
   if (description) {
     setMeta('description', description);
@@ -48,6 +48,10 @@ export function setSeo(title?: string, description?: string, keywords?: string) 
   setMeta('keywords', keywords);
   setOg('og:site_name', SITE_NAME);
   setOg('og:type', 'website');
+  // 页面级 OG 图（如产品分享卡片），为空则移除（回退到站点默认图）
+  setOg('og:image', image);
+  setTwitter('twitter:image', image);
+  if (image) setTwitter('twitter:card', 'summary_large_image');
 }
 
 /**
