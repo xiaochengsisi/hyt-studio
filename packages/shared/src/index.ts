@@ -237,4 +237,6 @@ export interface LoginPayload {
 export interface LoginResult {
   token: string;
   user: User;
+  /** 首次登录强制改密：为 true 时前端需弹窗强制改密 */
+  mustChangePassword?: boolean;
 }

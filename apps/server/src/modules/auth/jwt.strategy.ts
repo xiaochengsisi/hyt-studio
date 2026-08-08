@@ -18,6 +18,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!payload || payload.sub === undefined) {
       throw new UnauthorizedException('无效的令牌');
     }
-    return { id: payload.sub, username: payload.username, role: payload.role };
+    return { id: payload.sub, username: payload.username, role: payload.role, mcp: payload.mcp };
   }
 }

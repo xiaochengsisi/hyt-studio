@@ -4,6 +4,8 @@ export interface JwtUser {
   id: number;
   username: string;
   role: string;
+  /** must-change-password：为 true 时仅放行改密接口 */
+  mcp?: boolean;
 }
 
 /** Extract the authenticated user from the request. */

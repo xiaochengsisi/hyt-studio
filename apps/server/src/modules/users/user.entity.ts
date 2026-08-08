@@ -20,6 +20,10 @@ export class User {
   @Column({ default: 'admin' })
   role: string;
 
+  /** 首次登录强制改密：由环境变量创建的默认管理员为 true，改密后置 false */
+  @Column({ default: false })
+  mustChangePassword: boolean;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: string;
 

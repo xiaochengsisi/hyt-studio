@@ -30,7 +30,10 @@ export class UsersService {
     const existing = await this.findByUsername(username);
     if (existing) return;
     const hash = await bcrypt.hash(password, 10);
-    await this.usersRepo.save(this.usersRepo.create({ username, password: hash, role: 'admin' }));
+    // 由环境变量创建的默认管理员需在首次登录时强制改密
+    await this.usersRepo.save(
+      this.usersRepo.create({ username, password: hash, role: 'admin', mustChangePassword: true }),
+    );
   }
 
   async validatePassword(user: User, password: string): Promise<boolean> {
@@ -67,6 +70,21 @@ export class UsersService {
     user.password = await bcrypt.hash(newPassword, 10);
     const saved = await this.usersRepo.save(user);
     return this.toDto(saved);
+  }
+
+  /** 首次登录强制改密：需校验旧密码，改完清除 mustChangePassword 标志 */
+  async changePassword(id: number, oldPassword: string, newPassword: string): Promise<User> {
+    if (!newPassword || newPassword.length < 6)
+      throw new BadRequestException('新密码至少 6 个字符');
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('用户不存在');
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) throw new BadRequestException('原密码错误');
+    if (oldPassword === newPassword)
+      throw new BadRequestException('新密码不能与原密码相同');
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    return this.usersRepo.save(user);
   }
 
   async remove(id: number, operatorId: number): Promise<void> {

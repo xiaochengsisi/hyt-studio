@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { AppModule } from './app.module';
@@ -40,15 +41,22 @@ function serveSpa(app: NestExpressApplication, root: string, urlPrefix: string):
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Swagger / OpenAPI 文档
-  const config = new DocumentBuilder()
-    .setTitle('HYT Studio API')
-    .setDescription('HYT Studio 官网与后台 REST API 文档')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // 安全响应头：X-Content-Type-Options、X-Frame-Options、HSTS 等。
+  // CSP 关闭：生产 SPA 由 Vite 构建含内联 modulepreload，且后台支持注入统计代码，
+  // 严格 CSP 会阻断功能；其余安全头（防 MIME 嗅探 / 点击劫持 / 强制 HTTPS）仍启用。
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  // Swagger / OpenAPI 文档：仅开发环境暴露，生产环境关闭以防 API 结构泄露
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('HYT Studio API')
+      .setDescription('HYT Studio 官网与后台 REST API 文档')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // CORS 白名单：从 CORS_ORIGINS 读取逗号分隔来源，默认仅放行本地开发端口
   const corsOrigins = (process.env.CORS_ORIGINS ||

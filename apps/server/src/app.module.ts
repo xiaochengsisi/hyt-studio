@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { join } from 'path';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { UsersModule } from './modules/users/users.module';
@@ -28,6 +29,8 @@ import { Submission } from './modules/submissions/submission.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // 全局限流：默认每分钟 60 次，敏感接口（登录/提交）用 @Throttle 覆盖更严限制
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),
@@ -52,6 +55,10 @@ import { Submission } from './modules/submissions/submission.entity';
     HealthModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

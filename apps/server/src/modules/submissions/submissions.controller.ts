@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { ApproveAndCreateResult, Paginated, ProjectSubmission } from '@hyt/shared';
 import { QuerySubmissions, SubmissionsService } from './submissions.service';
 import { CreateSubmissionDto, ReviewSubmissionDto } from './dto/submission.dto';
@@ -10,8 +11,9 @@ import { Public } from '../../common/decorators/public.decorator';
 export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
-  /** 前台提交（公开） */
+  /** 前台提交（公开）：限流防垃圾刷单，每分钟 5 次 */
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post()
   create(@Body() data: CreateSubmissionDto): Promise<ProjectSubmission> {
     return this.submissionsService.create(data as any);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { auth, logout } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import ForceChangePassword from '../components/ForceChangePassword.vue';
 
 const router = useRouter();
 
@@ -60,6 +61,9 @@ const menu = [
     <main class="content">
       <router-view />
     </main>
+
+    <!-- 首次登录强制改密弹窗：未改密前遮罩整个后台 -->
+    <ForceChangePassword />
   </div>
 </template>
 

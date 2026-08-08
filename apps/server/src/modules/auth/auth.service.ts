@@ -23,6 +23,7 @@ export class AuthService {
       sub: user.id,
       username: user.username,
       role: user.role,
+      mcp: user.mustChangePassword,
     });
     return {
       token,
@@ -32,6 +33,32 @@ export class AuthService {
         role: user.role as 'admin',
         createdAt: user.createdAt,
       },
+      mustChangePassword: user.mustChangePassword,
+    };
+  }
+
+  /** 首次登录强制改密：校验旧密码后更新，并签发不含 mcp 的新令牌 */
+  async changePassword(
+    userId: number,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<LoginResult> {
+    const user = await this.usersService.changePassword(userId, oldPassword, newPassword);
+    const token = this.jwtService.sign({
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      mcp: false,
+    });
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role as 'admin',
+        createdAt: user.createdAt,
+      },
+      mustChangePassword: false,
     };
   }
 }
