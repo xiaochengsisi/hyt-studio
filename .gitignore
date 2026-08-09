@@ -28,3 +28,7 @@ npm-debug.log*
 # SQLite
 *.db
 *.db-journal
+
+# Runtime uploads (用户上传的图片等资源，不进版本库)
+apps/server/uploads/*
+!apps/server/uploads/.gitkeep
