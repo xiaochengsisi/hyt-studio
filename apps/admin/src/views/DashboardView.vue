@@ -8,9 +8,34 @@ const router = useRouter();
 const stats = ref<DashboardStats | null>(null);
 const loading = ref(true);
 
+// 默认空统计，避免后端返回字段缺失时模板访问嵌套属性崩溃
+const emptyStats: DashboardStats = {
+  products: { total: 0, published: 0 },
+  articles: { total: 0, published: 0 },
+  submissions: { total: 0, pending: 0 },
+  engagement: { totalViews: 0, totalLikes: 0, totalStars: 0 },
+  counts: { members: 0, topics: 0, subscribers: 0, media: 0 },
+  topProducts: [],
+  recentSubmissions: [],
+  recentAudit: [],
+};
+
 onMounted(async () => {
   try {
-    stats.value = await adminApi.getDashboardStats();
+    const data = await adminApi.getDashboardStats();
+    // 合并默认值：即使后端返回对象缺少某些字段也不会白屏
+    stats.value = {
+      ...emptyStats,
+      ...data,
+      products: { ...emptyStats.products, ...data?.products },
+      articles: { ...emptyStats.articles, ...data?.articles },
+      submissions: { ...emptyStats.submissions, ...data?.submissions },
+      engagement: { ...emptyStats.engagement, ...data?.engagement },
+      counts: { ...emptyStats.counts, ...data?.counts },
+      topProducts: data?.topProducts ?? [],
+      recentSubmissions: data?.recentSubmissions ?? [],
+      recentAudit: data?.recentAudit ?? [],
+    };
   } finally {
     loading.value = false;
   }
