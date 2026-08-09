@@ -44,7 +44,15 @@ async function bootstrap() {
   // 安全响应头：X-Content-Type-Options、X-Frame-Options、HSTS 等。
   // CSP 关闭：生产 SPA 由 Vite 构建含内联 modulepreload，且后台支持注入统计代码，
   // 严格 CSP 会阻断功能；其余安全头（防 MIME 嗅探 / 点击劫持 / 强制 HTTPS）仍启用。
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // crossOriginResourcePolicy 放开为 cross-origin：开发环境前后端分离跨域时，
+  // 前台 <img> 需直接加载后端 /uploads 资源；same-origin 会被浏览器阻断。
+  // 生产环境单端口同源部署，该头不影响。
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Swagger / OpenAPI 文档：仅开发环境暴露，生产环境关闭以防 API 结构泄露
   if (process.env.NODE_ENV !== 'production') {
