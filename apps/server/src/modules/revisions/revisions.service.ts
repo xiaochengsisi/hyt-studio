@@ -15,7 +15,7 @@ export class RevisionsService {
   ) {}
 
   private toDto(e: Revision): RevisionDto {
-    let snapshot: Record<string, any> = {};
+    let snapshot: Record<string, any>;
     try {
       snapshot = JSON.parse(e.snapshot || '{}');
     } catch {

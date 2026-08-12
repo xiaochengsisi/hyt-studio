@@ -6,9 +6,52 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { createGzip } from 'zlib';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/transform.interceptor';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+
+/**
+ * gzip 压缩中间件：基于 Node 内置 zlib 实现（零额外依赖）。
+ * 只压缩文本类响应（JSON / HTML / JS / CSS / SVG），跳过已压缩与二进制内容。
+ * 同时覆盖 NestJS 控制器响应与 express.static 静态文件（通过重写 res.write/end 生效）。
+ */
+function gzipCompression() {
+  return (req: any, res: any, next: any) => {
+    if (res.headersSent || res.getHeader('Content-Encoding')) return next();
+    if (!/gzip/i.test(req.headers['accept-encoding'] || '')) return next();
+    const ct = String(res.getHeader('Content-Type') || '');
+    if (
+      /image\/|video\/|audio\/|font\/|application\/pdf|application\/zip|application\/gzip|application\/octet-stream/i.test(
+        ct,
+      )
+    ) {
+      return next();
+    }
+
+    const gz = createGzip();
+    res.setHeader('Content-Encoding', 'gzip');
+    res.setHeader('Vary', 'Accept-Encoding');
+    res.removeHeader('Content-Length');
+
+    const origWrite = res.write.bind(res);
+    const origEnd = res.end.bind(res);
+    gz.on('data', (chunk) => origWrite(chunk));
+    gz.on('end', () => origEnd());
+    gz.on('error', () => origEnd());
+
+    res.write = (chunk: any, ..._rest: any[]) => {
+      gz.write(chunk);
+      return true;
+    };
+    res.end = (chunk?: any, ..._rest: any[]) => {
+      if (chunk) gz.write(chunk);
+      gz.end();
+      return res;
+    };
+    next();
+  };
+}
 
 /**
  * 托管构建后的前端 SPA：静态资源 + history 模式 fallback。
@@ -18,11 +61,19 @@ function serveSpa(app: NestExpressApplication, root: string, urlPrefix: string):
   const indexFile = join(root, 'index.html');
   if (!existsSync(indexFile)) return;
   const indexHtml = readFileSync(indexFile, 'utf-8');
-  if (urlPrefix) {
-    app.useStaticAssets(root, { prefix: `${urlPrefix}/` });
-  } else {
-    app.useStaticAssets(root);
-  }
+  // Vite 构建产物带内容 hash，位于 assets/ 目录下：可长缓存（immutable）；
+  // index.html 每次重新校验（no-cache），保证发版后能拿到最新页面。
+  const setHeaders = (res: any, filePath: string) => {
+    if (/[\\/]assets[\\/]/.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  };
+  app.useStaticAssets(root, {
+    prefix: urlPrefix ? `${urlPrefix}/` : undefined,
+    setHeaders,
+  });
   const express = app.getHttpAdapter().getInstance() as any;
   express.use((req: any, res: any, next: any) => {
     if (req.method !== 'GET') return next();
@@ -53,6 +104,9 @@ async function bootstrap() {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
+
+  // gzip 压缩：置于路由 / 静态资源之前，对 JSON/HTML/JS/CSS 响应生效
+  app.use(gzipCompression());
 
   // Swagger / OpenAPI 文档：仅开发环境暴露，生产环境关闭以防 API 结构泄露
   if (process.env.NODE_ENV !== 'production') {
@@ -95,9 +149,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Serve uploaded files statically
+  // Serve uploaded files statically（用户上传内容，可短缓存减少重复请求）
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
+    setHeaders: (res: any) => {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    },
   });
 
   // 生产环境托管构建后的前台 / 后台 SPA（Docker 部署时 public/ 与 admin-public/ 存在）

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { Article as ArticleDto, Paginated } from '@hyt/shared';
+import { CacheService } from '../../common/cache.service';
 import { Article as ArticleEntity } from './article.entity';
 import { RevisionsService } from '../revisions/revisions.service';
 import { WebhookService } from '../webhook/webhook.service';
@@ -19,6 +20,7 @@ export class ArticlesService {
   constructor(
     @InjectRepository(ArticleEntity)
     private readonly repo: Repository<ArticleEntity>,
+    private readonly cache: CacheService,
     private readonly revisions: RevisionsService,
     private readonly webhook: WebhookService,
     private readonly translations: TranslationsService,
@@ -45,6 +47,13 @@ export class ArticlesService {
   }
 
   async list(query: QueryArticles): Promise<Paginated<ArticleDto>> {
+    // 前台公开列表（status=published）加 TTL 缓存；后台列表不缓存
+    const cacheable = query.status === 'published';
+    const cacheKey = `article:list:${JSON.stringify(query)}`;
+    if (cacheable) {
+      const hit = this.cache.get<Paginated<ArticleDto>>(cacheKey);
+      if (hit) return hit;
+    }
     const page = query.page || 1;
     const pageSize = query.pageSize || 100;
     const qb = this.repo.createQueryBuilder('a');
@@ -61,7 +70,14 @@ export class ArticlesService {
       .skip((page - 1) * pageSize)
       .take(pageSize);
     const [items, total] = await qb.getManyAndCount();
-    return { items: items.map((e) => this.toDto(e)), total, page, pageSize };
+    const result: Paginated<ArticleDto> = {
+      items: items.map((e) => this.toDto(e)),
+      total,
+      page,
+      pageSize,
+    };
+    if (cacheable) this.cache.set(cacheKey, result, 20_000);
+    return result;
   }
 
   async findBySlug(slug: string, onlyPublished = false, lang?: string): Promise<ArticleDto> {

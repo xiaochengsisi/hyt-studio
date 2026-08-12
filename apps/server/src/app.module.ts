@@ -6,6 +6,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { join } from 'path';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { CacheModule } from './common/cache.module';
 import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -50,6 +51,8 @@ import { Translation } from './modules/translations/translation.entity';
     ScheduleModule.forRoot(),
     // 全局限流：默认每分钟 60 次，敏感接口（登录/提交）用 @Throttle 覆盖更严限制
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
+    // 全局内存 TTL 缓存（公开读接口）
+    CacheModule,
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),

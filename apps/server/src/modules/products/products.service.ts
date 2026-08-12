@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
+import { Interval } from '@nestjs/schedule';
 import { HealthBadge, Paginated, Product } from '@hyt/shared';
+import { CacheService } from '../../common/cache.service';
 import { Product as ProductEntity } from './product.entity';
 import { ProductLike } from './product-like.entity';
 import { RevisionsService } from '../revisions/revisions.service';
@@ -28,6 +30,7 @@ export class ProductsService {
     private readonly repo: Repository<ProductEntity>,
     @InjectRepository(ProductLike)
     private readonly likesRepo: Repository<ProductLike>,
+    private readonly cache: CacheService,
     private readonly revisions: RevisionsService,
     private readonly webhook: WebhookService,
     private readonly healthService: HealthService,
@@ -37,6 +40,15 @@ export class ProductsService {
   /** 简单内存去重：同 IP + 同产品 10 分钟内只计一次浏览 */
   private readonly viewDedup = new Map<string, number>();
   private viewDedupTtl = 10 * 60 * 1000;
+
+  /** 定期清理过期的浏览去重记录，防止 Map 无限增长 */
+  @Interval(5 * 60 * 1000)
+  private pruneViewDedup(): void {
+    const now = Date.now();
+    for (const [k, t] of this.viewDedup) {
+      if (now - t > this.viewDedupTtl) this.viewDedup.delete(k);
+    }
+  }
 
   private toDto(e: ProductEntity): Product {
     return {
@@ -76,6 +88,13 @@ export class ProductsService {
   }
 
   async list(query: QueryProducts): Promise<Paginated<Product>> {
+    // 前台公开列表（status=published）加 TTL 缓存；后台列表不缓存，避免编辑延迟可见
+    const cacheable = query.status === 'published';
+    const cacheKey = `product:list:${JSON.stringify(query)}`;
+    if (cacheable) {
+      const hit = this.cache.get<Paginated<Product>>(cacheKey);
+      if (hit) return hit;
+    }
     const page = query.page || 1;
     const pageSize = query.pageSize || 100;
     const qb = this.repo.createQueryBuilder('p');
@@ -118,12 +137,14 @@ export class ProductsService {
     }
     qb.skip((page - 1) * pageSize).take(pageSize);
     const [items, total] = await qb.getManyAndCount();
-    return {
+    const result: Paginated<Product> = {
       items: items.map((e) => this.toDto(e)),
       total,
       page,
       pageSize,
     };
+    if (cacheable) this.cache.set(cacheKey, result, 20_000);
+    return result;
   }
 
   async findBySlug(slug: string, onlyPublished = false, ip?: string, lang?: string): Promise<Product> {
@@ -157,25 +178,31 @@ export class ProductsService {
     return dto;
   }
 
-  /** 匿名点赞：按 anonId 去重，已点过则取消点赞 */
+  /** 匿名点赞：按 anonId 去重，已点过则取消点赞（用原子 increment 避免并发丢更新） */
   async toggleLike(slug: string, anonId: string): Promise<{ liked: boolean; likeCount: number }> {
-    const product = await this.repo.findOne({ where: { slug, status: 'published' as any } });
+    const product = await this.repo.findOne({
+      where: { slug, status: 'published' as any },
+      select: ['id'],
+    });
     if (!product) throw new NotFoundException('产品不存在');
     const existing = await this.likesRepo.findOne({ where: { productId: product.id, anonId } });
+    const liked = !existing;
     if (existing) {
       await this.likesRepo.remove(existing);
-      product.likeCount = Math.max(0, product.likeCount - 1);
-      await this.repo.save(product);
-      return { liked: false, likeCount: product.likeCount };
+      await this.repo.increment({ id: product.id }, 'likeCount', -1);
+    } else {
+      await this.likesRepo.save(this.likesRepo.create({ productId: product.id, anonId }));
+      await this.repo.increment({ id: product.id }, 'likeCount', 1);
     }
-    await this.likesRepo.save(this.likesRepo.create({ productId: product.id, anonId }));
-    product.likeCount += 1;
-    await this.repo.save(product);
-    return { liked: true, likeCount: product.likeCount };
+    const updated = await this.repo.findOne({ where: { id: product.id }, select: ['likeCount'] });
+    return { liked, likeCount: Math.max(0, updated?.likeCount ?? 0) };
   }
 
   /** 热门产品（综合浏览+点赞+star） */
   async findHot(limit = 6): Promise<Product[]> {
+    const cacheKey = `product:hot:${limit}`;
+    const hit = this.cache.get<Product[]>(cacheKey);
+    if (hit) return hit;
     const items = await this.repo
       .createQueryBuilder('p')
       .where('p.status = :status', { status: 'published' })
@@ -183,23 +210,31 @@ export class ProductsService {
       .addOrderBy('p.id', 'DESC')
       .take(limit)
       .getMany();
-    return items.map((e) => this.toDto(e));
+    const result = items.map((e) => this.toDto(e));
+    this.cache.set(cacheKey, result, 60_000);
+    return result;
   }
 
-  /** 已发布产品的编程语言列表（用于筛选） */
+  /** 已发布产品的编程语言列表（用于筛选）：SQL GROUP BY 聚合，避免全表读入内存 */
   async listLanguages(): Promise<{ name: string; count: number }[]> {
-    const rows = await this.repo.find({
-      where: { status: 'published' as any },
-      select: ['language'],
-    });
-    const counter = new Map<string, number>();
-    for (const r of rows) {
-      const lang = (r.language || '').trim();
-      if (lang) counter.set(lang, (counter.get(lang) || 0) + 1);
-    }
-    return [...counter.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    const cacheKey = 'product:languages';
+    const hit = this.cache.get<{ name: string; count: number }[]>(cacheKey);
+    if (hit) return hit;
+    const rows = await this.repo
+      .createQueryBuilder('p')
+      .select('p.language', 'language')
+      .addSelect('COUNT(*)', 'count')
+      .where("p.status = :status AND p.language IS NOT NULL AND p.language != ''", {
+        status: 'published',
+      })
+      .groupBy('p.language')
+      .orderBy('COUNT(*)', 'DESC')
+      .getRawMany<{ language: string; count: string }>();
+    const result = rows
+      .map((r) => ({ name: String(r.language).trim(), count: Number(r.count) }))
+      .filter((x) => x.name);
+    this.cache.set(cacheKey, result, 60_000);
+    return result;
   }
 
   async findById(id: number): Promise<ProductEntity> {
@@ -254,6 +289,9 @@ export class ProductsService {
 
   /** 已发布产品的全部标签（去重，按出现频次降序），供前台标签筛选 */
   async listTags(): Promise<{ name: string; count: number }[]> {
+    const cacheKey = 'product:tags';
+    const hit = this.cache.get<{ name: string; count: number }[]>(cacheKey);
+    if (hit) return hit;
     const rows = await this.repo.find({
       where: { status: 'published' },
       select: ['tags'],
@@ -264,9 +302,11 @@ export class ProductsService {
         counter.set(t, (counter.get(t) || 0) + 1);
       }
     }
-    return [...counter.entries()]
+    const result = [...counter.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    this.cache.set(cacheKey, result, 60_000);
+    return result;
   }
 
   /** 相关项目：按标签重合度排序，排除自身，仅已发布 */

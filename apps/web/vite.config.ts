@@ -16,4 +16,15 @@ export default defineConfig({
       '/uploads': 'http://localhost:3000',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // 将稳定的第三方库拆成独立 chunk，利于浏览器长缓存命中
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'vue-i18n'],
+          'vendor-markdown': ['marked', 'dompurify'],
+        },
+      },
+    },
+  },
 });

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityItem, DashboardStats, SiteStats } from '@hyt/shared';
+import { CacheService } from '../../common/cache.service';
 import { Product } from '../products/product.entity';
 import { Article } from '../articles/article.entity';
 import { Submission } from '../submissions/submission.entity';
@@ -22,6 +23,7 @@ export class StatsService {
     @InjectRepository(Topic) private readonly topics: Repository<Topic>,
     @InjectRepository(Subscriber) private readonly subscribers: Repository<Subscriber>,
     @InjectRepository(Media) private readonly media: Repository<Media>,
+    private readonly cache: CacheService,
   ) {}
 
   async getDashboardStats(): Promise<DashboardStats> {
@@ -131,6 +133,9 @@ export class StatsService {
 
   /** 前台公开聚合统计：已发布产品/文章数 + Star/浏览/点赞汇总 + 成员数 */
   async getPublicStats(): Promise<SiteStats> {
+    const cacheKey = 'stats:public';
+    const hit = this.cache.get<SiteStats>(cacheKey);
+    if (hit) return hit;
     const [products, articles, totalStars, totalViews, totalLikes, members] = await Promise.all([
       this.products.count({ where: { status: 'published' } }),
       this.articles.count({ where: { status: 'published' } }),
@@ -151,7 +156,7 @@ export class StatsService {
         .getRawOne<{ sum: string }>(),
       this.members.count(),
     ]);
-    return {
+    const result: SiteStats = {
       products,
       articles,
       totalStars: Number(totalStars?.sum || 0),
@@ -159,6 +164,8 @@ export class StatsService {
       totalLikes: Number(totalLikes?.sum || 0),
       members,
     };
+    this.cache.set(cacheKey, result, 60_000);
+    return result;
   }
 
   /**
@@ -167,6 +174,9 @@ export class StatsService {
    */
   async getActivity(limit = 8): Promise<ActivityItem[]> {
     const take = Math.min(Math.max(limit || 8, 1), 20);
+    const cacheKey = `stats:activity:${take}`;
+    const hit = this.cache.get<ActivityItem[]>(cacheKey);
+    if (hit) return hit;
     const [recentProducts, recentArticles] = await Promise.all([
       this.products.find({
         where: { status: 'published' as any },
@@ -206,8 +216,10 @@ export class StatsService {
       });
     }
 
-    return items
+    const result = items
       .sort((x, y) => new Date(y.time).getTime() - new Date(x.time).getTime())
       .slice(0, take);
+    this.cache.set(cacheKey, result, 30_000);
+    return result;
   }
 }
