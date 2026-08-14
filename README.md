@@ -1,116 +1,164 @@
-# HYT Studio 官网
+<div align="center">
 
-HYT Studio 网络工作室官方开源网站。基于 Vue 3 + NestJS + SQLite 的自研内容管理系统，官网前台与独立后台一体，可展示开源产品与团队动态，前台所有展示内容（除底部版权）均可通过后台可视化发布。
+<img src="apps/admin/public/favicon.svg" width="80" alt="HYT Studio Logo" />
+
+# HYT Studio
+
+**一套开箱即用的工作室官网 + 自研 CMS，Vue 3 + NestJS + SQLite，Docker 一键部署**
+
+**A ready-to-use studio website + self-built CMS — Vue 3 · NestJS · SQLite · Docker**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/Node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![Build](https://github.com/xiaochengsisi/hyt-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/xiaochengsisi/hyt-studio/actions/workflows/ci.yml)
 
-## 技术栈
+[🚀 快速开始 / Quick Start](#-快速开始--quick-start) · [✨ 功能一览 / Features](#-功能一览--features) · [🐳 部署 / Deploy](#-部署--deploy) · [🤝 贡献 / Contributing](#-贡献--contributing)
 
-| 层 | 技术 |
-| --- | --- |
-| 前台 web | Vue 3 + Vite + TypeScript + Vue Router |
-| 后台 admin | Vue 3 + Vite + TypeScript（独立应用） |
-| 后端 server | NestJS + TypeORM + JWT + SQLite |
-| 共享 | @hyt/shared 类型包 |
+</div>
 
-## 目录结构
+---
+
+## 这是什么？ / What is this?
+
+**中文：** HYT Studio 是一个完整的工作室官方网站，同时也是一套自研的轻量 CMS。你可以 fork 后改几行配置，就拥有一个支持产品展示、博客、团队成员、项目投稿审核的官网——**所有前台内容均可通过后台可视化发布，无需改代码**。
+
+**English:** HYT Studio is a complete studio website and a lightweight self-built CMS. Fork it, tweak a few config lines, and you have a fully-featured site with product showcases, a blog, team pages, and project submission review — **all front-end content is managed visually through the admin panel, no code changes needed**.
+
+> 本项目本身即作为 HYT Studio 的开源产品在官网上展示。  
+> This project itself is showcased as an open-source product on our own site.
+
+---
+
+## ✨ 功能一览 / Features
+
+### 前台官网 / Public Site
+
+| 模块             | 说明                                                                   |
+| ---------------- | ---------------------------------------------------------------------- |
+| 🏠 首页          | 工作室介绍 + 精选产品 + 实时统计                                       |
+| 📦 产品列表/详情 | 多维筛选（标签/语言/分类/排序）、截图、Markdown 文档、点赞、健康度徽章 |
+| 📝 博客          | 文章列表 + Markdown 详情                                               |
+| 👥 团队          | 成员展示页                                                             |
+| 📬 项目投稿      | 访客可提交开源项目，后台审核后转正                                     |
+| 🌐 国际化        | 中文 / English 双语（vue-i18n）                                        |
+| 🔍 SEO           | 动态 meta · OG / Twitter 卡片 · JSON-LD 结构化数据（GEO 友好）         |
+
+### 管理后台 / Admin Panel
+
+- **产品管理** — 增删改查、上架/下架/精选/排序、GitHub 数据同步、多图截图、Markdown 文档、多语言翻译、版本历史回滚
+- **博客管理** — Markdown 编辑器、定时发布
+- **投稿审核** — 一键批准并转为产品草稿
+- **页面内容编辑** — 首页 / 关于等前台文案可视化修改
+- **站点设置** — SEO · AI SEO（一键生成 SEO 元信息）· Giscus 评论 · SMTP · Webhook
+- **多管理员** — 账号管理、操作审计日志
+- **数据备份** — 后台一键下载 SQLite 数据库
+
+### 后端 / Backend
+
+- `GET /api/health` 健康检查
+- `GET /api/docs` Swagger 接口文档
+- `/rss.xml` RSS 订阅
+- `/sitemap.xml` 站点地图
+- 存储层可切换：本地文件 / S3
+
+### 🤖 AI SEO（生成式引擎优化）
+
+后台配置任意 OpenAI 兼容服务商（DeepSeek / 智谱 GLM / OpenAI / 自定义），在产品或文章编辑页点击「✨ AI 生成 SEO」，根据正文一键生成 SEO 标题、描述与关键词，前台自动输出对应 meta 与 schema.org 结构化数据。
+
+---
+
+## 🛠 技术栈 / Tech Stack
+
+| 层                 | 技术                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| 前台 `apps/web`    | Vue 3 · Vite · TypeScript · Vue Router · vue-i18n                                  |
+| 后台 `apps/admin`  | Vue 3 · Vite · TypeScript                                                          |
+| 后端 `apps/server` | NestJS 11 · TypeORM · Passport/JWT · SQLite                                        |
+| 共享类型           | `@hyt/shared`（npm workspaces monorepo）                                           |
+| 部署               | Docker · docker-compose                                                            |
+| 质量               | ESLint · Prettier · Husky · lint-staged · Conventional Commits · GitHub Actions CI |
+
+---
+
+## 📁 目录结构 / Directory Structure
 
 ```
 hyt/
 ├── apps/
-│   ├── web/        # 官网前台（产品展示 / 博客 / 关于 / 提交申请）
-│   ├── admin/      # 管理后台（登录 / 产品 / 文章 / 用户 / 审核 / 设置）
+│   ├── web/        # 官网前台
+│   ├── admin/      # 管理后台（独立 SPA）
 │   └── server/     # 后端 API（REST + JWT + SQLite）
 ├── packages/
-│   └── shared/     # 前后端共享类型
-├── .github/        # Issue / PR 模板与 CI
-├── Dockerfile      # 生产部署
+│   └── shared/     # 前后端共享 TS 类型
+├── .github/        # CI · Issue / PR 模板
+├── Dockerfile
 └── docker-compose.yml
 ```
 
-## 快速开始
+---
 
-前置：Node.js >= 18
+## 🚀 快速开始 / Quick Start
+
+**前置 / Prerequisites：** Node.js ≥ 18
 
 ```bash
-# 1. 安装依赖（根目录，npm workspaces 会一并安装所有子包）
+# 1. 克隆 / Clone
+git clone https://github.com/xiaochengsisi/hyt-studio.git && cd hyt-studio
+
+# 2. 安装依赖 / Install（monorepo，一次安装所有子包）
 npm install
 
-# 2. 配置后端环境变量
+# 3. 配置后端环境变量 / Configure env
 cp apps/server/.env.example apps/server/.env
+# 按需修改 JWT_SECRET 与 ADMIN_PASSWORD
 
-# 3. 一键启动（或分别运行下面三个）
-npm run dev            # 同时启动后端 / 前台 / 后台
+# 4. 一键启动 / Start all
+npm run dev
 ```
 
-也可以分别启动：
+| 服务     | 地址                  |
+| -------- | --------------------- |
+| 后端 API | http://localhost:3000 |
+| 前台官网 | http://localhost:5175 |
+| 管理后台 | http://localhost:5174 |
 
-```bash
-npm run dev:server     # 后端 http://localhost:3000
-npm run dev:web        # 前台 http://localhost:5175
-npm run dev:admin      # 后台 http://localhost:5174
-```
-
-首次启动后端会自动创建 SQLite 数据库，并创建默认管理员（见 `.env`）：
+首次启动后端会自动创建 SQLite 数据库，并创建默认管理员：
 
 - 用户名：`admin`
-- 密码：见 `ADMIN_PASSWORD`（默认 `admin123`，生产环境务必修改）
+- 密码：见 `.env` 中的 `ADMIN_PASSWORD`（默认 `admin123`，**生产环境务必修改**）
 
-> 生产环境务必修改 `JWT_SECRET` 与 `ADMIN_PASSWORD`，并按部署章节配置。
+---
 
-## 功能
-
-**前台**
-- 首页：工作室介绍 + 精选产品
-- 产品列表 / 详情：名称、简介、Logo、截图、标签、GitHub、版本、文档
-- 博客列表 / 详情、关于我们
-- 项目提交申请：访客可提交开源项目，后台审核后转正
-- SEO：动态 meta、OG / Twitter 卡片、JSON-LD 结构化数据（生成式引擎优化 GEO）
-
-**后台**
-- 登录（JWT）、多管理员账号管理
-- 产品管理：增删改查、上架/下架、精选、排序、多图截图上传、Markdown 文档
-- 博客管理：写文章、发布、Markdown 编辑
-- 项目提交审核：批准 / 驳回 / 删除
-- 页面内容编辑：前台文案（除底部版权）可视化修改
-- 站点设置：站点信息、备案与统计、SEO、AI SEO（一键生成 SEO 元信息）
-- 操作审计日志
-
-**后端 API（/api）**
-- 认证、用户、产品、文章、提交审核、站点配置、上传
-- `GET /api/health` 健康检查
-- `GET /api/docs` Swagger 接口文档
-- RSS（`/rss.xml`）与 sitemap（`/sitemap.xml`）
-
-## AI SEO（生成式引擎优化）
-
-后台「站点设置」中配置任意 OpenAI 兼容服务商（DeepSeek / 智谱 GLM / OpenAI / 自定义），填入接口地址、模型与 API Key 后，在产品或文章编辑页点击「✨ AI 生成 SEO」即可根据正文一键生成 SEO 标题、描述与关键词。前台详情页会自动输出对应 meta 与 schema.org 结构化数据，便于传统搜索引擎与 ChatGPT / Perplexity 等 AI 引擎收录引用。
-
-## 部署
-
-提供 Docker 一键部署：
+## 🐳 部署 / Deploy
 
 ```bash
 # 构建并启动（包含后端 + 构建后的前台/后台静态资源）
 docker compose up -d --build
 ```
 
-默认对外端口见 `docker-compose.yml`，SQLite 数据库与上传文件通过 volume 持久化。详见 [部署文档](./docs/DEPLOY.md)。
+SQLite 数据库与上传文件通过 volume 持久化。详见 [DEPLOY.md](./DEPLOY.md)。
 
-## 开发与质量
+---
+
+## 🤝 贡献 / Contributing
+
+欢迎 Issue、PR、文档改进和功能建议！详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ```bash
-npm run lint           # ESLint 检查
-npm run lint:fix      # 自动修复
-npm run build          # 构建所有 workspace
-npm test               # 运行后端单元测试
+# 代码检查
+npm run lint
+
+# 构建验证
+npm run build
+
+# 运行后端单元测试
+npm test
 ```
 
-- 提交前 husky + lint-staged 会自动校验与格式化
-- 提交规范遵循 Conventional Commits（详见 [CONTRIBUTING](./CONTRIBUTING.md)）
+提交规范遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)。
 
-## 说明
+---
 
-- 本项目本身即作为 HYT Studio 的开源产品在官网上展示。
-- 数据库默认位于 `apps/server/data/hyt.db`，后台可视化发布，无需改代码即可维护官网内容。
-- 开源协议：[MIT](./LICENSE)。
+## 📄 许可证 / License
+
+[MIT](./LICENSE) © 2026 HYT Studio
