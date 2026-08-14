@@ -24,11 +24,10 @@ import { logout } from '../stores/auth';
 const BASE = '/api';
 
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('hyt_admin_token');
   const res = await fetch(`${BASE}${url}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...options,
   });
@@ -45,7 +44,12 @@ export async function request<T>(url: string, options?: RequestInit): Promise<T>
 
 export const adminApi = {
   // products
-  listProducts: (params?: { page?: number; pageSize?: number; status?: string; keyword?: string }) => {
+  listProducts: (params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    keyword?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params?.page) q.set('page', String(params.page));
     if (params?.pageSize) q.set('pageSize', String(params.pageSize));
@@ -61,13 +65,20 @@ export const adminApi = {
     request<Product>(`/products/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   syncGithub: (id: number) =>
     request<Product>(`/products/admin/${id}/sync-github`, { method: 'POST' }),
-  deleteProduct: (id: number) =>
-    request<void>(`/products/admin/${id}`, { method: 'DELETE' }),
+  deleteProduct: (id: number) => request<void>(`/products/admin/${id}`, { method: 'DELETE' }),
   bulkProducts: (payload: BulkActionPayload) =>
-    request<BulkActionResult>('/products/admin/bulk', { method: 'POST', body: JSON.stringify(payload) }),
+    request<BulkActionResult>('/products/admin/bulk', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // articles
-  listArticles: (params?: { page?: number; pageSize?: number; status?: string; keyword?: string }) => {
+  listArticles: (params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    keyword?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params?.page) q.set('page', String(params.page));
     if (params?.pageSize) q.set('pageSize', String(params.pageSize));
@@ -83,7 +94,10 @@ export const adminApi = {
     request<Article>(`/articles/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteArticle: (id: number) => request<void>(`/articles/admin/${id}`, { method: 'DELETE' }),
   bulkArticles: (payload: BulkActionPayload) =>
-    request<BulkActionResult>('/articles/admin/bulk', { method: 'POST', body: JSON.stringify(payload) }),
+    request<BulkActionResult>('/articles/admin/bulk', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // site config
   getSiteConfig: () => request<SiteConfig>('/site-config/admin'),
@@ -91,8 +105,12 @@ export const adminApi = {
     request<SiteConfig>('/site-config', { method: 'PUT', body: JSON.stringify(data) }),
 
   // ai seo
-  generateSeo: (data: { type: 'product' | 'article'; name: string; content?: string; tags?: string }) =>
-    request<AiSeoResult>('/ai-seo/generate', { method: 'POST', body: JSON.stringify(data) }),
+  generateSeo: (data: {
+    type: 'product' | 'article';
+    name: string;
+    content?: string;
+    tags?: string;
+  }) => request<AiSeoResult>('/ai-seo/generate', { method: 'POST', body: JSON.stringify(data) }),
 
   // users
   listUsers: () => request<User[]>('/users'),
@@ -104,12 +122,11 @@ export const adminApi = {
 
   // upload
   upload: async (file: File): Promise<string> => {
-    const token = localStorage.getItem('hyt_admin_token');
     const form = new FormData();
     form.append('file', file);
     const res = await fetch(`${BASE}/uploads`, {
       method: 'POST',
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: 'include',
       body: form,
     });
     const body = await res.json();
@@ -118,7 +135,12 @@ export const adminApi = {
   },
 
   // submissions
-  listSubmissions: (params?: { page?: number; pageSize?: number; status?: string; keyword?: string }) => {
+  listSubmissions: (params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    keyword?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params?.page) q.set('page', String(params.page));
     if (params?.pageSize) q.set('pageSize', String(params.pageSize));
@@ -136,8 +158,7 @@ export const adminApi = {
     request<ApproveAndCreateResult>(`/submissions/admin/${id}/approve-and-create`, {
       method: 'POST',
     }),
-  deleteSubmission: (id: number) =>
-    request<void>(`/submissions/admin/${id}`, { method: 'DELETE' }),
+  deleteSubmission: (id: number) => request<void>(`/submissions/admin/${id}`, { method: 'DELETE' }),
 
   // stats & audit
   getDashboardStats: () => request<DashboardStats>('/stats/dashboard'),
@@ -156,8 +177,7 @@ export const adminApi = {
     request<Member>('/members/admin', { method: 'POST', body: JSON.stringify(data) }),
   updateMember: (id: number, data: Partial<Member>) =>
     request<Member>(`/members/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteMember: (id: number) =>
-    request<void>(`/members/admin/${id}`, { method: 'DELETE' }),
+  deleteMember: (id: number) => request<void>(`/members/admin/${id}`, { method: 'DELETE' }),
 
   // revisions（修订历史）
   listRevisions: (type: 'product' | 'article', id: number) =>
@@ -188,9 +208,8 @@ export const adminApi = {
 
   // backup（备份）
   exportBackup: async (): Promise<Blob> => {
-    const token = localStorage.getItem('hyt_admin_token');
     const res = await fetch(`${BASE}/backup/export`, {
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: 'include',
     });
     return res.blob();
   },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { logout } from '../stores/auth';
 
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>();
@@ -51,9 +52,8 @@ const commands = computed<Cmd[]>(() => [
   {
     label: '退出登录',
     group: '操作',
-    action: () => {
-      localStorage.removeItem('hyt_admin_token');
-      localStorage.removeItem('hyt_admin_user');
+    action: async () => {
+      await logout();
       window.location.href = '/login';
     },
   },

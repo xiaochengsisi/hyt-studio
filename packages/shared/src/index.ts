@@ -248,7 +248,14 @@ export interface DashboardStats {
     media: number;
   };
   /** 浏览量 Top 产品 */
-  topProducts: { id: number; slug: string; name: string; viewCount: number; likeCount: number; githubStars: number }[];
+  topProducts: {
+    id: number;
+    slug: string;
+    name: string;
+    viewCount: number;
+    likeCount: number;
+    githubStars: number;
+  }[];
   recentSubmissions: ProjectSubmission[];
   recentAudit: AuditLogEntry[];
 }
@@ -412,7 +419,6 @@ export interface LoginPayload {
 }
 
 export interface LoginResult {
-  token: string;
   user: User;
   /** 首次登录强制改密：为 true 时前端需弹窗强制改密 */
   mustChangePassword?: boolean;

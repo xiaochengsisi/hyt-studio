@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Res, HttpCode } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LoginResult } from '@hyt/shared';
@@ -9,16 +10,36 @@ import { Public } from '../../common/decorators/public.decorator';
 import { AllowPasswordChange } from '../../common/decorators/allow-password-change.decorator';
 import { CurrentUser, JwtUser } from '../../common/decorators/current-user.decorator';
 
+/** 鉴权 Cookie 名称（httpOnly，前端无法通过 JS 读取，规避 XSS 窃取令牌） */
+const AUTH_COOKIE = 'hyt_admin_token';
+
 @ApiTags('auth')
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /** 统一构建鉴权 Cookie 选项：httpOnly + 生产环境 Secure + SameSite */
+  private authCookieOptions() {
+    const isProd = process.env.NODE_ENV === 'production';
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: (process.env.COOKIE_SAMESITE as 'lax' | 'strict' | 'none') || 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 与 JWT 默认有效期（7d）保持一致
+    };
+  }
+
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
-  login(@Body() payload: LoginDto): Promise<LoginResult> {
-    return this.authService.login(payload);
+  async login(
+    @Body() payload: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResult> {
+    const out = await this.authService.login(payload);
+    res.cookie(AUTH_COOKIE, out.token, this.authCookieOptions());
+    return { user: out.user, mustChangePassword: out.mustChangePassword };
   }
 
   @Get('me')
@@ -27,13 +48,28 @@ export class AuthController {
     return user;
   }
 
-  /** 首次登录强制改密：校验原密码后更新，返回不含 mcp 的新令牌 */
+  /** 首次登录强制改密：校验原密码后更新，并换发不含 mcp 的新令牌（同步刷新 Cookie） */
   @AllowPasswordChange()
   @Post('change-password')
-  changePassword(
+  async changePassword(
     @CurrentUser() user: JwtUser,
     @Body() payload: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResult> {
-    return this.authService.changePassword(user.id, payload.oldPassword, payload.newPassword);
+    const out = await this.authService.changePassword(
+      user.id,
+      payload.oldPassword,
+      payload.newPassword,
+    );
+    res.cookie(AUTH_COOKIE, out.token, this.authCookieOptions());
+    return { user: out.user, mustChangePassword: out.mustChangePassword };
+  }
+
+  /** 登出：清除 httpOnly 鉴权 Cookie，使令牌在客户端失效 */
+  @Post('logout')
+  @HttpCode(200)
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie(AUTH_COOKIE, { path: '/' });
+    return { success: true };
   }
 }

@@ -3,6 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { LoginPayload, LoginResult } from '@hyt/shared';
 
+/** JWT 有效期：与鉴权 Cookie 的 maxAge 保持一致（默认 7 天），可通过 JWT_EXPIRES_IN 环境变量覆盖 */
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
 /** 登录失败锁定：同一账号连续失败达到阈值后锁定一段时间，缓解暴力破解 */
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
@@ -17,27 +20,28 @@ export class AuthService {
   /** 账号 -> 失败计数 / 锁定截止时间（进程内存，重启后清零；足以阻挡在线爆破） */
   private readonly loginAttempts = new Map<string, { count: number; lockUntil: number }>();
 
-  async login(payload: LoginPayload): Promise<LoginResult> {
+  async login(payload: LoginPayload): Promise<LoginResult & { token: string }> {
     const username = (payload.username || '').trim().toLowerCase();
     // 防暴力破解：同一账号连续失败达阈值后临时锁定
     this.assertNotLocked(username);
 
     const user = await this.usersService.findByUsername(payload.username);
-    const valid = user
-      ? await this.usersService.validatePassword(user, payload.password)
-      : false;
+    const valid = user ? await this.usersService.validatePassword(user, payload.password) : false;
     if (!user || !valid) {
       this.recordLoginFailure(username);
       throw new UnauthorizedException('用户名或密码错误');
     }
 
     this.clearLoginFailures(username);
-    const token = this.jwtService.sign({
-      sub: user.id,
-      username: user.username,
-      role: user.role,
-      mcp: user.mustChangePassword,
-    });
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        username: user.username,
+        role: user.role,
+        mcp: user.mustChangePassword,
+      },
+      { expiresIn: JWT_EXPIRES_IN as any },
+    );
     return {
       token,
       user: {
@@ -77,14 +81,17 @@ export class AuthService {
     userId: number,
     oldPassword: string,
     newPassword: string,
-  ): Promise<LoginResult> {
+  ): Promise<LoginResult & { token: string }> {
     const user = await this.usersService.changePassword(userId, oldPassword, newPassword);
-    const token = this.jwtService.sign({
-      sub: user.id,
-      username: user.username,
-      role: user.role,
-      mcp: false,
-    });
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        username: user.username,
+        role: user.role,
+        mcp: false,
+      },
+      { expiresIn: JWT_EXPIRES_IN as any },
+    );
     return {
       token,
       user: {
