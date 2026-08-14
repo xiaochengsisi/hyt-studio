@@ -43,6 +43,8 @@ export class SubmissionsService {
   async create(data: Partial<SubmissionEntity>): Promise<ProjectSubmission> {
     const name = (data.name || '').trim();
     if (name.length < 2) throw new BadRequestException('项目名称至少 2 个字符');
+    // 蜜罐：机器人若填写隐藏字段则按垃圾信息处理
+    if ((data as any).hp) throw new BadRequestException('提交失败，请稍后重试');
     if (!data.repoUrl && !data.homepage)
       throw new BadRequestException('请至少填写仓库地址或项目主页');
     const entity = this.repo.create({

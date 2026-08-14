@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SiteConfigService } from '../site-config/site-config.service';
+import { isSafeOutboundUrl } from '../../common/utils/ssrf';
 
 export interface WebhookEvent {
   /** 事件类型：product.published / article.published / submission.created / subscriber.confirmed 等 */
@@ -35,6 +36,17 @@ export class WebhookService {
         .filter((u: string) => /^https?:\/\//.test(u));
       if (!urls.length) return;
 
+      // SSRF 防护：过滤掉指向内网 / 本地的地址
+      const safeUrls: string[] = [];
+      for (const u of urls) {
+        if (await isSafeOutboundUrl(u)) {
+          safeUrls.push(u);
+        } else {
+          this.logger.warn(`Webhook ${u} 已跳过：目标地址不安全（可能为内网/本地地址）`);
+        }
+      }
+      if (!safeUrls.length) return;
+
       const payload: WebhookEvent = {
         event,
         timestamp: new Date().toISOString(),
@@ -43,7 +55,7 @@ export class WebhookService {
 
       // 并发推送，单条失败不影响其他
       await Promise.allSettled(
-        urls.map(async (url: string) => {
+        safeUrls.map(async (url: string) => {
           try {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 5000);

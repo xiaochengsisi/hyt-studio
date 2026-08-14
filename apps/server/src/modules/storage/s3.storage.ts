@@ -6,7 +6,7 @@ import { StoragePort, StoredFile } from './storage.interface';
 /**
  * S3 / 对象存储实现。使用 @aws-sdk/client-s3（需自行安装）。
  * 通过 STORAGE_DRIVER=s3 启用，并配置 S3_ENDPOINT / S3_REGION / S3_BUCKET /
- * S3_ACCESS_KEY / S3_SECRET_KEY / S3_PUBLIC_BASE。
+ * S3_ACCESS_KEY / S3_SECRET_KEY / S3_PUBLIC_BASE / S3_ACL。
  *
  * 未安装 @aws-sdk/client-s3 时调用会抛出明确错误，不影响本地开发构建。
  */
@@ -46,7 +46,8 @@ export class S3Storage implements StoragePort {
         Bucket: this.bucket,
         Key: filename,
         Body: file.buffer,
-        ACL: 'public-read',
+        // 由 S3_ACL 环境变量控制，默认 public-read（兼容原有行为）；私有桶可设为 private 等
+        ACL: (process.env.S3_ACL || 'public-read') as 'public-read',
       }),
     );
 
@@ -56,6 +57,8 @@ export class S3Storage implements StoragePort {
 
   async delete(filename: string): Promise<void> {
     try {
+      // 强校验文件名形态，拒绝含路径分隔符或 .. 的输入，防止误删其它 Key
+      if (!/^[\w-]+\.[a-z0-9]+$/i.test(filename)) return;
       const sdk = require('@aws-sdk/client-s3');
       const client = new sdk.S3Client({
         region: process.env.S3_REGION,

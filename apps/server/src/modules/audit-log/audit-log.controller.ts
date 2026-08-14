@@ -1,6 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { AuditLogService } from './audit-log.service';
+import { Roles } from '../../common/decorators/roles.decorator';
 
+@Roles('admin')
 @Controller('api/audit-log')
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}

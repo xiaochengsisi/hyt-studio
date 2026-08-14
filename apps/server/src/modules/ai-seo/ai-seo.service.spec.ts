@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { AiSeoService } from './ai-seo.service';
 
+// SSRF 校验工具在单测中按放行处理，避免依赖真实 DNS 解析，专注测试解析逻辑
+jest.mock('../../common/utils/ssrf');
+
 /** 模拟 SiteConfigService */
 function mockSiteConfigService(cfg: any) {
   return { getAdminConfig: async () => cfg } as any;

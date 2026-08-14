@@ -68,7 +68,22 @@ export class AuditInterceptor implements NestInterceptor {
             status: 200,
           });
         },
-        // 失败的操作也可记录（如登录失败），但此处保持简单，仅记录成功
+        // 同时记录失败操作（如登录失败 / 越权 / 校验错误），用于发现暴力破解与异常调用
+        error: (err: any) => {
+          if (!shouldLog) return;
+          this.auditLogService.log({
+            action: route.action,
+            method,
+            path,
+            target: route.target,
+            targetId: route.targetId,
+            userId: user?.id,
+            username: user?.username,
+            ip,
+            detail: bodySummary,
+            status: (err && err.status) || 500,
+          });
+        },
       }),
     );
   }

@@ -10,7 +10,7 @@ async function errorsOf(instance: any): Promise<number> {
 
 describe('LoginDto', () => {
   it('合法输入通过校验', async () => {
-    const dto = plainToInstance(LoginDto, { username: 'admin', password: 'secret' });
+    const dto = plainToInstance(LoginDto, { username: 'admin', password: 'secret12' });
     expect(await errorsOf(dto)).toBe(0);
   });
 

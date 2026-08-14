@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, ServiceUnavailableException } from '@nestjs/common';
 import { AiSeoGeneratePayload, AiSeoResult } from '@hyt/shared';
 import { SiteConfigService } from '../site-config/site-config.service';
+import { assertSafeOutboundUrl } from '../../common/utils/ssrf';
 
 /** 每用户限流：窗口 60s 内最多 20 次，避免滥用与成本失控 */
 const RATE_WINDOW_MS = 60_000;
@@ -43,6 +44,9 @@ export class AiSeoService {
     if (!baseUrl || !apiKey || !model) {
       throw new BadRequestException('未配置 AI 服务，请先在站点设置中填写接口地址、模型与 API Key');
     }
+
+    // SSRF 防护：禁止向内部 / 本地地址发起请求
+    await assertSafeOutboundUrl(`${baseUrl}/chat/completions`);
 
     const messages = this.buildMessages(payload);
     const body: Record<string, unknown> = {

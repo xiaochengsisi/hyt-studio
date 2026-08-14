@@ -4,8 +4,10 @@ import { AiSeoResult } from '@hyt/shared';
 import { AiSeoService } from './ai-seo.service';
 import { AiSeoGenerateDto } from './dto/ai-seo-generate.dto';
 import { CurrentUser, JwtUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('ai-seo')
+@Roles('admin')
 @Controller('api/ai-seo')
 export class AiSeoController {
   constructor(private readonly aiSeoService: AiSeoService) {}

@@ -11,8 +11,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { UsersService, UserDto } from './users.service';
 import { CreateUserDto, UpdatePasswordDto } from './dto/user.dto';
 import { CurrentUser, JwtUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('users')
+@Roles('admin')
 @Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

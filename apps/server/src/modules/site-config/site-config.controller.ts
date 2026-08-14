@@ -4,6 +4,7 @@ import { SiteConfig } from '@hyt/shared';
 import { SiteConfigService } from './site-config.service';
 import { UpdateSiteConfigDto } from './dto/site-config.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('site-config')
 @Controller('api/site-config')
@@ -17,12 +18,14 @@ export class SiteConfigController {
     return this.siteConfigService.getConfig();
   }
 
-  /** 管理员配置（含 AI Key，需登录） */
+  /** 管理员配置（含 AI Key，需登录且为管理员） */
+  @Roles('admin')
   @Get('admin')
   getAdminConfig(): Promise<SiteConfig> {
     return this.siteConfigService.getAdminConfig();
   }
 
+  @Roles('admin')
   @Put()
   updateConfig(@Body() data: UpdateSiteConfigDto): Promise<SiteConfig> {
     return this.siteConfigService.updateConfig(data as any);

@@ -150,10 +150,14 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Serve uploaded files statically（用户上传内容，可短缓存减少重复请求）
+  // 安全头：对上传资源强制 nosniff，并以严格 CSP 阻断脚本（尤其 SVG 被直接作为文档打开时的脚本执行），
+  // 作为「存储型 XSS」的深度防御。该 CSP 不影响 <img> 正常引用。
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
     setHeaders: (res: any) => {
       res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'none'");
     },
   });
 

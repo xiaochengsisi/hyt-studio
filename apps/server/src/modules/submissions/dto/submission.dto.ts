@@ -43,6 +43,12 @@ export class CreateSubmissionDto {
   @IsEmail({}, { message: '邮箱格式不正确' })
   @MaxLength(200)
   email?: string;
+
+  /** 蜜罐字段：前端表单不应填写；若被填充则判定为机器人提交并静默丢弃 */
+  @ApiProperty({ required: false, description: '防机器人蜜罐，请勿填写' })
+  @IsOptional()
+  @IsString()
+  hp?: string;
 }
 
 export enum ReviewStatus {

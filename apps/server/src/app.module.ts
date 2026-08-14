@@ -6,6 +6,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { join } from 'path';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { CacheModule } from './common/cache.module';
 import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
@@ -95,6 +96,10 @@ import { Translation } from './modules/translations/translation.entity';
       useClass: JwtAuthGuard,
     },
     {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
@@ -107,7 +112,22 @@ export class AppModule implements OnModuleInit {
     // Seed default admin from env on first boot
     const username = process.env.ADMIN_USERNAME || 'admin';
     const password = process.env.ADMIN_PASSWORD || 'admin123';
+
+    // 生产环境强制要求强口令：避免部署时静默使用弱默认口令（admin/admin123）对外暴露。
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
+      if (!password || password.length < 8 || password === 'admin123') {
+        throw new Error(
+          '生产环境必须配置强管理员密码（ADMIN_PASSWORD，至少 8 位且不能是默认口令 admin123），请检查 .env',
+        );
+      }
+    }
+
     await this.usersService.ensureAdmin(username, password);
-    console.log(`Default admin ready: ${username}`);
+    if (isProd) {
+      console.log(`[SECURITY] 默认管理员「${username}」已就绪，请确认首次登录已改密。`);
+    } else {
+      console.log(`Default admin ready: ${username}`);
+    }
   }
 }

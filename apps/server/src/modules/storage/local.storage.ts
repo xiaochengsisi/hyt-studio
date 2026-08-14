@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
-import { extname, join } from 'path';
+import { extname, join, resolve, sep } from 'path';
 import { randomBytes } from 'crypto';
 import { StoragePort, StoredFile } from './storage.interface';
 
@@ -20,8 +20,13 @@ export class LocalStorage implements StoragePort {
 
   async delete(filename: string): Promise<void> {
     try {
-      const safe = join(this.dir, filename.replace(/^[/\\]+/, ''));
-      if (existsSync(safe)) unlinkSync(safe);
+      // 强校验文件名形态，拒绝任何含路径分隔符或 .. 的输入，杜绝任意文件删除
+      if (!/^[\w-]+\.[a-z0-9]+$/i.test(filename)) return;
+      const safe = join(this.dir, filename);
+      const resolved = resolve(safe);
+      // 二次防御：确认解析后的绝对路径仍位于 uploads 目录内
+      if (resolved !== safe && !resolved.startsWith(this.dir + sep)) return;
+      if (existsSync(resolved)) unlinkSync(resolved);
     } catch {
       /* best-effort */
     }

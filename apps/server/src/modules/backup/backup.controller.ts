@@ -3,8 +3,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { BackupPayload } from '@hyt/shared';
 import { BackupService } from './backup.service';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('backup')
+@Roles('admin')
 @Controller('api/backup')
 export class BackupController {
   constructor(private readonly backupService: BackupService) {}
