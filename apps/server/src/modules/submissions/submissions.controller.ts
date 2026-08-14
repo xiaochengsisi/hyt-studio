@@ -5,6 +5,7 @@ import { ApproveAndCreateResult, Paginated, ProjectSubmission } from '@hyt/share
 import { QuerySubmissions, SubmissionsService } from './submissions.service';
 import { CreateSubmissionDto, ReviewSubmissionDto } from './dto/submission.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('submissions')
 @Controller('api/submissions')
@@ -20,26 +21,27 @@ export class SubmissionsController {
   }
 
   /** 后台：审核列表 */
+  @Roles('admin')
   @Get('admin')
   list(@Query() query: QuerySubmissions): Promise<Paginated<ProjectSubmission>> {
     return this.submissionsService.list(query);
   }
 
   /** 后台：审核（approve/reject） */
+  @Roles('admin')
   @Put('admin/:id/review')
-  review(
-    @Param('id') id: number,
-    @Body() body: ReviewSubmissionDto,
-  ): Promise<ProjectSubmission> {
+  review(@Param('id') id: number, @Body() body: ReviewSubmissionDto): Promise<ProjectSubmission> {
     return this.submissionsService.review(Number(id), body.status, body.note);
   }
 
   /** 后台：审核通过并一键创建为产品草稿 */
+  @Roles('admin')
   @Post('admin/:id/approve-and-create')
   approveAndCreate(@Param('id') id: number): Promise<ApproveAndCreateResult> {
     return this.submissionsService.approveAndCreate(Number(id));
   }
 
+  @Roles('admin')
   @Delete('admin/:id')
   remove(@Param('id') id: number): Promise<void> {
     return this.submissionsService.remove(Number(id));

@@ -38,3 +38,7 @@ apps/server/uploads/*
 
 # Vite 构建临时文件
 *.timestamp-*.mjs
+
+# Runtime data (登录锁定持久化等运行时文件，不进版本库)
+data/
+

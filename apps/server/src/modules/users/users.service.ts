@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -29,7 +34,7 @@ export class UsersService {
   async ensureAdmin(username: string, password: string): Promise<void> {
     const existing = await this.findByUsername(username);
     if (existing) return;
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 12);
     // 由环境变量创建的默认管理员需在首次登录时强制改密
     await this.usersRepo.save(
       this.usersRepo.create({ username, password: hash, role: 'admin', mustChangePassword: true }),
@@ -55,7 +60,7 @@ export class UsersService {
     if (!password || password.length < 6) throw new BadRequestException('密码至少 6 个字符');
     const existing = await this.findByUsername(name);
     if (existing) throw new ConflictException(`用户名「${name}」已存在`);
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 12);
     const saved = await this.usersRepo.save(
       this.usersRepo.create({ username: name, password: hash, role }),
     );
@@ -63,11 +68,10 @@ export class UsersService {
   }
 
   async updatePassword(id: number, newPassword: string): Promise<UserDto> {
-    if (!newPassword || newPassword.length < 6)
-      throw new BadRequestException('密码至少 6 个字符');
+    if (!newPassword || newPassword.length < 6) throw new BadRequestException('密码至少 6 个字符');
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('用户不存在');
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, 12);
     const saved = await this.usersRepo.save(user);
     return this.toDto(saved);
   }
@@ -80,9 +84,8 @@ export class UsersService {
     if (!user) throw new NotFoundException('用户不存在');
     const valid = await bcrypt.compare(oldPassword, user.password);
     if (!valid) throw new BadRequestException('原密码错误');
-    if (oldPassword === newPassword)
-      throw new BadRequestException('新密码不能与原密码相同');
-    user.password = await bcrypt.hash(newPassword, 10);
+    if (oldPassword === newPassword) throw new BadRequestException('新密码不能与原密码相同');
+    user.password = await bcrypt.hash(newPassword, 12);
     user.mustChangePassword = false;
     return this.usersRepo.save(user);
   }

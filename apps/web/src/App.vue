@@ -29,7 +29,12 @@ watch(
   { deep: true, immediate: true },
 );
 
-/** 将后台配置的统计代码注入到 <head>（原样执行 <script>） */
+/**
+ * 将后台配置的统计代码注入到 <head>（原样执行 <script>）。
+ * 注意：analyticsCode 属「受信任的管理员自有内容」（仅管理员可在后台设置），
+ * 并非外部用户输入，因此按设计原样注入。鉴权 Cookie 已是 httpOnly，
+ * 即便被注入脚本也无法读取令牌；如未来开放给非信任来源，须改为白名单校验。
+ */
 watch(
   () => site.value?.analyticsCode,
   (code) => {

@@ -19,15 +19,22 @@ import type {
   Subscriber,
   BackupPayload,
 } from '@hyt/shared';
-import { logout } from '../stores/auth';
+import { logout, auth } from '../stores/auth';
 
 const BASE = '/api';
 
+/** 读取 CSRF 双提交令牌（由后端在登录 / 改密 / 恢复会话时下发到内存态 auth store） */
+function csrfToken(): string {
+  return auth?.csrfToken || '';
+}
+
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = csrfToken();
   const res = await fetch(`${BASE}${url}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'X-CSRF-Token': token } : {}),
     },
     ...options,
   });
@@ -124,9 +131,11 @@ export const adminApi = {
   upload: async (file: File): Promise<string> => {
     const form = new FormData();
     form.append('file', file);
+    const token = csrfToken();
     const res = await fetch(`${BASE}/uploads`, {
       method: 'POST',
       credentials: 'include',
+      headers: token ? { 'X-CSRF-Token': token } : undefined,
       body: form,
     });
     const body = await res.json();
@@ -208,8 +217,10 @@ export const adminApi = {
 
   // backup（备份）
   exportBackup: async (): Promise<Blob> => {
+    const token = csrfToken();
     const res = await fetch(`${BASE}/backup/export`, {
       credentials: 'include',
+      headers: token ? { 'X-CSRF-Token': token } : undefined,
     });
     return res.blob();
   },

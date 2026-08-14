@@ -92,6 +92,9 @@ function serveSpa(app: NestExpressApplication, root: string, urlPrefix: string):
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // 关闭 Express 默认 `X-Powered-By: Express` 响应头，避免泄露技术栈指纹
+  app.disable('x-powered-by');
+
   // 安全响应头：X-Content-Type-Options、X-Frame-Options、HSTS 等。
   // CSP 关闭：生产 SPA 由 Vite 构建含内联 modulepreload，且后台支持注入统计代码，
   // 严格 CSP 会阻断功能；其余安全头（防 MIME 嗅探 / 点击劫持 / 强制 HTTPS）仍启用。
@@ -104,6 +107,16 @@ async function bootstrap() {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
+
+  // Permissions-Policy：禁用摄像头 / 麦克风 / 地理位置等本站点不使用的敏感能力，
+  // 缩小被滥用的攻击面（helmet v8 已将其移出顶层选项，此处手动设置以兼容各版本）。
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()',
+    );
+    next();
+  });
 
   // gzip 压缩：置于路由 / 静态资源之前，对 JSON/HTML/JS/CSS 响应生效
   app.use(gzipCompression());
@@ -121,8 +134,9 @@ async function bootstrap() {
   }
 
   // CORS 白名单：从 CORS_ORIGINS 读取逗号分隔来源，默认仅放行本地开发端口
-  const corsOrigins = (process.env.CORS_ORIGINS ||
-    'http://localhost:5173,http://localhost:5174,http://localhost:5175')
+  const corsOrigins = (
+    process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175'
+  )
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);

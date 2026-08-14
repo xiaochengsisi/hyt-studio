@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/c
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { LoginPayload, LoginResult } from '@hyt/shared';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 /** JWT 有效期：与鉴权 Cookie 的 maxAge 保持一致（默认 7 天），可通过 JWT_EXPIRES_IN 环境变量覆盖 */
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -10,15 +12,49 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
+/** 登录失败记录持久化文件：重启 / 多实例部署下仍保持锁定状态（零新增依赖） */
+const LOCK_FILE = join(process.cwd(), 'data', '.login-lock.json');
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.loadLockFile();
+  }
 
-  /** 账号 -> 失败计数 / 锁定截止时间（进程内存，重启后清零；足以阻挡在线爆破） */
+  /** 账号 -> 失败计数 / 锁定截止时间（热缓存；持久化见 .login-lock.json） */
   private readonly loginAttempts = new Map<string, { count: number; lockUntil: number }>();
+
+  /** 启动时从磁盘恢复未过期的锁定记录，避免重启后锁定失效 */
+  private loadLockFile(): void {
+    try {
+      if (!existsSync(LOCK_FILE)) return;
+      const obj = JSON.parse(readFileSync(LOCK_FILE, 'utf-8')) as Record<
+        string,
+        { count: number; lockUntil: number }
+      >;
+      const now = Date.now();
+      for (const [key, val] of Object.entries(obj)) {
+        if (val && val.lockUntil > now) this.loginAttempts.set(key, val);
+      }
+    } catch {
+      // 损坏的锁文件不影响启动，仅丢失历史锁定
+    }
+  }
+
+  /** 将当前锁定状态持久化到磁盘（同步写，文件极小、频率低） */
+  private saveLockFile(): void {
+    try {
+      const dir = join(process.cwd(), 'data');
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const obj = Object.fromEntries(this.loginAttempts);
+      writeFileSync(LOCK_FILE, JSON.stringify(obj));
+    } catch {
+      // 持久化失败不阻断登录流程
+    }
+  }
 
   async login(payload: LoginPayload): Promise<LoginResult & { token: string }> {
     const username = (payload.username || '').trim().toLowerCase();
@@ -70,10 +106,13 @@ export class AuthService {
       rec.count = 0;
     }
     this.loginAttempts.set(username, rec);
+    this.saveLockFile();
   }
 
   private clearLoginFailures(username: string): void {
+    if (!this.loginAttempts.has(username)) return;
     this.loginAttempts.delete(username);
+    this.saveLockFile();
   }
 
   /** 首次登录强制改密：校验旧密码后更新，并签发不含 mcp 的新令牌 */

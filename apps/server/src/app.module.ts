@@ -7,6 +7,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { join } from 'path';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { CsrfGuard } from './common/guards/csrf.guard';
 import { CacheModule } from './common/cache.module';
 import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
@@ -57,7 +58,21 @@ import { Translation } from './modules/translations/translation.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DB_PATH || join(process.cwd(), 'data', 'hyt.db'),
-      entities: [User, Product, ProductLike, Article, SiteConfig, Submission, AuditLog, Member, Revision, Media, Topic, Subscriber, Translation],
+      entities: [
+        User,
+        Product,
+        ProductLike,
+        Article,
+        SiteConfig,
+        Submission,
+        AuditLog,
+        Member,
+        Revision,
+        Media,
+        Topic,
+        Subscriber,
+        Translation,
+      ],
       // 生产环境关闭 synchronize 以避免数据丢失，改用迁移；开发环境保留以方便迭代
       synchronize: process.env.NODE_ENV !== 'production',
       migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
@@ -98,6 +113,10 @@ import { Translation } from './modules/translations/translation.entity';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
     },
     {
       provide: APP_INTERCEPTOR,
