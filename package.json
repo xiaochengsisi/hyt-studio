@@ -27,6 +27,10 @@
   "engines": {
     "node": ">=18"
   },
+  "overrides": {
+    "rxjs": "7.8.2",
+    "js-yaml": "5.2.3"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
@@ -34,6 +38,7 @@
     "eslint": "^10.8.1",
     "eslint-plugin-vue": "^10.10.0",
     "husky": "^9.1.7",
+    "iconv-lite": "^0.7.3",
     "lint-staged": "^17.3.0",
     "prettier": "^3.9.6"
   }

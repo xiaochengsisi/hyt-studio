@@ -32,3 +32,9 @@ npm-debug.log*
 # Runtime uploads (用户上传的图片等资源，不进版本库)
 apps/server/uploads/*
 !apps/server/uploads/.gitkeep
+
+# WorkBuddy local agent data (not tracked)
+.workbuddy/
+
+# Vite 构建临时文件
+*.timestamp-*.mjs
