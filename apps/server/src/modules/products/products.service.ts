@@ -326,27 +326,27 @@ export class ProductsService {
     this.cache.delete('product:languages');
   }
 
-  /** 已发布产品的全部标签（去重，按出现频次降序），供前台标签筛选 */
+  /**
+   * 已发布产品的全部标签（去重，按出现频次降序），供前台标签筛选。
+   * 用 SQLite json_each() 在 SQL 层聚合，避免全表读入内存。
+   */
   async listTags(): Promise<{ name: string; count: number }[]> {
     const cacheKey = 'product:tags';
     const hit = this.cache.get<{ name: string; count: number }[]>(cacheKey);
     if (hit) return hit;
-    const rows = await this.repo.find({
-      where: { status: 'published' },
-      select: ['tags'],
-    });
-    const counter = new Map<string, number>();
-    for (const r of rows) {
-      for (const t of (r.tags || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)) {
-        counter.set(t, (counter.get(t) || 0) + 1);
-      }
-    }
-    const result = [...counter.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    // SQLite json_each() 把 CSV 拆开后 GROUP BY，单条 SQL 完成聚合
+    const rows: { tag: string; count: number }[] = await this.repo.query(`
+      SELECT
+        TRIM(json_each.value) as tag,
+        COUNT(*) as count
+      FROM products
+      CROSS JOIN json_each('["' || REPLACE(TRIM(products.tags), ',', '","') || '"]')
+      WHERE products.status = 'published'
+        AND TRIM(json_each.value) != ''
+      GROUP BY TRIM(json_each.value)
+      ORDER BY count DESC, tag ASC
+    `);
+    const result = rows.map((r) => ({ name: r.tag, count: Number(r.count) }));
     this.cache.set(cacheKey, result, 60_000);
     return result;
   }

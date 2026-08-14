@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ApproveAndCreateResult, Paginated, Product, ProjectSubmission } from '@hyt/shared';
+import { pinyin } from 'pinyin-pro';
 import { Submission as SubmissionEntity } from './submission.entity';
 import { ProductsService } from '../products/products.service';
 import { WebhookService } from '../webhook/webhook.service';
@@ -164,18 +165,24 @@ export class SubmissionsService {
   }
 
   /**
-   * 将名称转为 URL slug；非拉丁字符（如中文）会被剔除。
-   * 若结果为空（纯中文名等），回退为时间戳短串，保证唯一性且避免 project-undefined。
+   * 将名称转为 URL slug：
+   * 1. 含中文时先用 pinyin-pro 转为带调号的拼音（无声调），再走拉丁化流程
+   * 2. 非中文拉丁字符直接小写化
+   * 3. 仍为空时回退为时间戳短串，保证唯一性
    */
   private slugify(input: string): string {
-    const latin = (input || '')
+    const raw = (input || '').trim();
+    // 检测是否含有中文字符，有则先转拼音
+    const hasChinese = /[一-鿿]/.test(raw);
+    const transliterated = hasChinese
+      ? pinyin(raw, { toneType: 'none', separator: '-', nonZh: 'consecutive' })
+      : raw;
+    const slug = transliterated
       .toLowerCase()
-      .trim()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60);
-    // 中文等纯非拉丁名称 latin 为空，用时间戳 base36 短串兜底
-    return latin || `sub-${Date.now().toString(36)}`;
+    return slug || `sub-${Date.now().toString(36)}`;
   }
 }
