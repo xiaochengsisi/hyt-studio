@@ -21,6 +21,14 @@ export class SubscribersService {
     return { id: e.id, email: e.email, confirmed: e.confirmed, createdAt: e.createdAt };
   }
 
+  /** 生成确认 token 及 24h 过期时间 */
+  private freshToken(): { token: string; expiredAt: string } {
+    return {
+      token: randomBytes(16).toString('hex'),
+      expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
   /** 订阅：创建未确认记录并发送确认邮件 */
   async subscribe(email: string): Promise<{ pending: boolean }> {
     const normalized = (email || '').trim().toLowerCase();
@@ -30,14 +38,20 @@ export class SubscribersService {
     const existing = await this.repo.findOne({ where: { email: normalized } });
     if (existing) {
       if (existing.confirmed) return { pending: false };
-      // 已存在未确认 → 重发确认邮件
-      await this.sendConfirm(existing);
+      // 已存在未确认 → 刷新 token 并重发确认邮件
+      const { token, expiredAt } = this.freshToken();
+      existing.confirmToken = token;
+      existing.confirmTokenExpiredAt = expiredAt;
+      const refreshed = await this.repo.save(existing);
+      await this.sendConfirm(refreshed);
       return { pending: true };
     }
+    const { token, expiredAt } = this.freshToken();
     const entity = this.repo.create({
       email: normalized,
       confirmed: false,
-      confirmToken: randomBytes(16).toString('hex'),
+      confirmToken: token,
+      confirmTokenExpiredAt: expiredAt,
     });
     const saved = await this.repo.save(entity);
     await this.sendConfirm(saved);
@@ -48,8 +62,13 @@ export class SubscribersService {
   async confirm(token: string): Promise<SubscriberDto> {
     const entity = await this.repo.findOne({ where: { confirmToken: token } });
     if (!entity) throw new NotFoundException('确认链接无效或已过期');
+    // 检查 token 是否已超过 24h 有效期
+    if (entity.confirmTokenExpiredAt && new Date(entity.confirmTokenExpiredAt) < new Date()) {
+      throw new BadRequestException('确认链接已过期，请重新订阅以获取新链接');
+    }
     entity.confirmed = true;
     entity.confirmToken = null as any;
+    entity.confirmTokenExpiredAt = null as any;
     const saved = await this.repo.save(entity);
     void this.webhook.emit('subscriber.confirmed', { id: saved.id, email: saved.email });
     return this.toDto(saved);
@@ -57,7 +76,9 @@ export class SubscribersService {
 
   /** 退订 */
   async unsubscribe(email: string): Promise<void> {
-    const entity = await this.repo.findOne({ where: { email: (email || '').trim().toLowerCase() } });
+    const entity = await this.repo.findOne({
+      where: { email: (email || '').trim().toLowerCase() },
+    });
     if (entity) await this.repo.remove(entity);
   }
 
@@ -66,17 +87,17 @@ export class SubscribersService {
     return items.map((e) => this.toDto(e));
   }
 
-  /** 群发邮件给所有已确认订阅者 */
+  /** 群发邮件给所有已确认订阅者（分批并发，每批 8 封，单条失败不阻断） */
   async broadcast(subject: string, html: string): Promise<{ sent: number }> {
     const items = await this.repo.find({ where: { confirmed: true } });
+    const BATCH = 8;
     let sent = 0;
-    for (const s of items) {
-      try {
-        await this.mailer.send({ to: s.email, subject, html });
-        sent += 1;
-      } catch {
-        /* 单条失败不阻断 */
-      }
+    for (let i = 0; i < items.length; i += BATCH) {
+      const batch = items.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        batch.map((s) => this.mailer.send({ to: s.email, subject, html })),
+      );
+      sent += results.filter((r) => r.status === 'fulfilled').length;
     }
     return { sent };
   }
@@ -94,6 +115,11 @@ export class SubscribersService {
         <p><a href="${link}" style="display:inline-block;padding:10px 20px;background:#0a7d50;color:#fff;text-decoration:none;border-radius:4px;">确认订阅</a></p>
         <p style="color:#999;font-size:12px;">或复制链接到浏览器：${link}</p>
       </div>`;
-    await this.mailer.send({ to: s.email, subject: `确认订阅 ${siteName}`, html, text: `确认订阅：${link}` });
+    await this.mailer.send({
+      to: s.email,
+      subject: `确认订阅 ${siteName}`,
+      html,
+      text: `确认订阅：${link}`,
+    });
   }
 }

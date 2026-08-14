@@ -16,6 +16,10 @@ export class Subscriber {
   @Column({ nullable: true })
   confirmToken?: string;
 
+  /** 确认 token 过期时间（24h 有效），过期后重新触发订阅可刷新 token */
+  @Column({ type: 'datetime', nullable: true })
+  confirmTokenExpiredAt?: string;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: string;
 }

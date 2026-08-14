@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 
 /**
  * 极简内存 TTL 缓存：用于低频变更的公开读接口（产品列表 / 热门 / 标签 / 语言 / 统计 / 活动流），
@@ -22,7 +23,21 @@ export class CacheService {
     this.store.set(key, { value, expires: Date.now() + ttlMs });
   }
 
+  /** 删除单个 key（写操作后主动失效） */
+  delete(key: string): void {
+    this.store.delete(key);
+  }
+
   clear(): void {
     this.store.clear();
+  }
+
+  /** 定期清理过期条目，防止 Map 因写入后再也不读的 key 无限增长 */
+  @Interval(5 * 60 * 1000)
+  pruneExpired(): void {
+    const now = Date.now();
+    for (const [key, item] of this.store) {
+      if (now > item.expires) this.store.delete(key);
+    }
   }
 }

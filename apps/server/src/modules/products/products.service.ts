@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { Interval } from '@nestjs/schedule';
@@ -130,7 +135,10 @@ export class ProductsService {
         qb.orderBy('p.id', 'DESC');
         break;
       case 'hot':
-        qb.orderBy('p.viewCount + p.likeCount * 5 + p.githubStars', 'DESC').addOrderBy('p.id', 'DESC');
+        qb.orderBy('p.viewCount + p.likeCount * 5 + p.githubStars', 'DESC').addOrderBy(
+          'p.id',
+          'DESC',
+        );
         break;
       default:
         qb.orderBy('p.sortOrder', 'ASC').addOrderBy('p.id', 'DESC');
@@ -147,7 +155,12 @@ export class ProductsService {
     return result;
   }
 
-  async findBySlug(slug: string, onlyPublished = false, ip?: string, lang?: string): Promise<Product> {
+  async findBySlug(
+    slug: string,
+    onlyPublished = false,
+    ip?: string,
+    lang?: string,
+  ): Promise<Product> {
     const where: FindOptionsWhere<ProductEntity> = { slug };
     if (onlyPublished) where.status = 'published';
     const entity = await this.repo.findOne({ where });
@@ -257,10 +270,22 @@ export class ProductsService {
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    // 写操作后主动失效标签 / 语言缓存，避免前台延迟 60s 才看到新标签
+    this.cache.delete('product:tags');
+    this.cache.delete('product:languages');
     if (saved.status === 'published') {
-      void this.webhook.emit('product.published', { id: saved.id, slug: saved.slug, name: saved.name });
+      void this.webhook.emit('product.published', {
+        id: saved.id,
+        slug: saved.slug,
+        name: saved.name,
+      });
     } else {
-      void this.webhook.emit('product.created', { id: saved.id, slug: saved.slug, name: saved.name, status: saved.status });
+      void this.webhook.emit('product.created', {
+        id: saved.id,
+        slug: saved.slug,
+        name: saved.name,
+        status: saved.status,
+      });
     }
     return dto;
   }
@@ -273,11 +298,22 @@ export class ProductsService {
     const saved = await this.repo.save(entity);
     const dto = this.toDto(saved);
     await this.revisions.saveSnapshot('product', saved.id, dto, username);
+    // 写操作后主动失效标签 / 语言缓存
+    this.cache.delete('product:tags');
+    this.cache.delete('product:languages');
     // 草稿 → 已发布 触发 published 事件
     if (wasDraft && saved.status === 'published') {
-      void this.webhook.emit('product.published', { id: saved.id, slug: saved.slug, name: saved.name });
+      void this.webhook.emit('product.published', {
+        id: saved.id,
+        slug: saved.slug,
+        name: saved.name,
+      });
     } else {
-      void this.webhook.emit('product.updated', { id: saved.id, slug: saved.slug, name: saved.name });
+      void this.webhook.emit('product.updated', {
+        id: saved.id,
+        slug: saved.slug,
+        name: saved.name,
+      });
     }
     return dto;
   }
@@ -285,6 +321,9 @@ export class ProductsService {
   async remove(id: number): Promise<void> {
     // 软删除：标记 deletedAt，数据仍保留可恢复
     await this.repo.softDelete(id);
+    // 删除也需要失效标签 / 语言缓存
+    this.cache.delete('product:tags');
+    this.cache.delete('product:languages');
   }
 
   /** 已发布产品的全部标签（去重，按出现频次降序），供前台标签筛选 */
@@ -298,7 +337,10 @@ export class ProductsService {
     });
     const counter = new Map<string, number>();
     for (const r of rows) {
-      for (const t of (r.tags || '').split(',').map((s) => s.trim()).filter(Boolean)) {
+      for (const t of (r.tags || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)) {
         counter.set(t, (counter.get(t) || 0) + 1);
       }
     }
@@ -309,26 +351,36 @@ export class ProductsService {
     return result;
   }
 
-  /** 相关项目：按标签重合度排序，排除自身，仅已发布 */
+  /** 相关项目：先用 SQL LIKE 过滤含任意匹配 tag 的候选集，再内存按重合度排序，排除自身，仅已发布 */
   async findRelated(slug: string, limit = 4): Promise<Product[]> {
     const current = await this.repo.findOne({ where: { slug } });
     if (!current) return [];
-    const tags = (current.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const tags = (current.tags || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (!tags.length) return [];
-    // 取一批已发布产品（排除自身）后在内存中按标签重合度排序
-    const candidates = await this.repo
+    // SQL 层过滤：至少有一个 tag 匹配，缩小候选集后再内存排重合度
+    const qb = this.repo
       .createQueryBuilder('p')
       .where('p.status = :status', { status: 'published' })
-      .andWhere('p.id != :id', { id: current.id })
-      .take(50)
-      .getMany();
+      .andWhere('p.id != :id', { id: current.id });
+    const tagConditions = tags.map((_, i) => `(',' || p.tags || ',') LIKE :t${i}`);
+    const tagParams: Record<string, string> = {};
+    tags.forEach((t, i) => {
+      tagParams[`t${i}`] = `%,${t},%`;
+    });
+    qb.andWhere(`(${tagConditions.join(' OR ')})`, tagParams).take(50);
+    const candidates = await qb.getMany();
     return candidates
       .map((c) => {
-        const ct = (c.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const ct = (c.tags || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
         const overlap = ct.filter((t) => tags.includes(t)).length;
         return { c, overlap };
       })
-      .filter((x) => x.overlap > 0)
       .sort((a, b) => b.overlap - a.overlap)
       .slice(0, limit)
       .map((x) => this.toDto(x.c));
@@ -392,7 +444,10 @@ export class ProductsService {
     // 若无版本号，尝试拉取最新 release
     if (!entity.version) {
       try {
-        const relRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, { headers });
+        const relRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/releases/latest`,
+          { headers },
+        );
         if (relRes.ok) {
           const rel: any = await relRes.json();
           if (rel.tag_name) entity.version = rel.tag_name.replace(/^v/, '');

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ApproveAndCreateResult, Paginated, Product, ProjectSubmission } from '@hyt/shared';
@@ -70,9 +75,12 @@ export class SubmissionsService {
     if (query.status) qb.andWhere('s.status = :status', { status: query.status });
     if (query.keyword) {
       const kw = `%${query.keyword}%`;
-      qb.andWhere('(s.name LIKE :kw OR s.tagline LIKE :kw OR s.author LIKE :kw OR s.email LIKE :kw)', {
-        kw,
-      });
+      qb.andWhere(
+        '(s.name LIKE :kw OR s.tagline LIKE :kw OR s.author LIKE :kw OR s.email LIKE :kw)',
+        {
+          kw,
+        },
+      );
     }
     qb.orderBy('s.id', 'DESC')
       .skip((page - 1) * pageSize)
@@ -93,7 +101,11 @@ export class SubmissionsService {
   }
 
   /** 审核：更新状态（approved/rejected）及备注 */
-  async review(id: number, status: 'approved' | 'rejected', note?: string): Promise<ProjectSubmission> {
+  async review(
+    id: number,
+    status: 'approved' | 'rejected',
+    note?: string,
+  ): Promise<ProjectSubmission> {
     if (!['approved', 'rejected'].includes(status))
       throw new BadRequestException('审核状态必须是 approved 或 rejected');
     const entity = await this.findById(id);
@@ -123,7 +135,7 @@ export class SubmissionsService {
   }
 
   private async createProductFromSubmission(s: SubmissionEntity): Promise<Product> {
-    const baseSlug = this.slugify(s.name) || `project-${s.id}`;
+    const baseSlug = this.slugify(s.name);
     // 生成唯一 slug：冲突时追加 -2 / -3 …
     let slug = baseSlug;
     let attempt = 0;
@@ -151,14 +163,19 @@ export class SubmissionsService {
     }
   }
 
-  /** 将名称转为 URL slug；非拉丁字符会被剔除，调用方需处理空值回退 */
+  /**
+   * 将名称转为 URL slug；非拉丁字符（如中文）会被剔除。
+   * 若结果为空（纯中文名等），回退为时间戳短串，保证唯一性且避免 project-undefined。
+   */
   private slugify(input: string): string {
-    return (input || '')
+    const latin = (input || '')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60);
+    // 中文等纯非拉丁名称 latin 为空，用时间戳 base36 短串兜底
+    return latin || `sub-${Date.now().toString(36)}`;
   }
 }
