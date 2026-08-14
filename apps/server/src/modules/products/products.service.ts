@@ -420,6 +420,17 @@ export class ProductsService {
     return headers;
   }
 
+  /** 带 30s 超时的 fetch 封装：GitHub 接口慢响应时主动中止，避免请求长时间挂起 */
+  private async timedFetch(url: string, headers: Record<string, string>): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    try {
+      return await fetch(url, { headers, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /** 同步 GitHub 数据：stars/forks/issues/language/license/最新版本 */
   async syncGithub(id: number): Promise<Product> {
     const entity = await this.findById(id);
@@ -427,7 +438,7 @@ export class ProductsService {
     const { owner, repo } = this.parseRepoUrl(entity.repoUrl);
     const headers = this.githubHeaders();
 
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+    const res = await this.timedFetch(`https://api.github.com/repos/${owner}/${repo}`, headers);
     if (res.status === 404) throw new BadRequestException('GitHub 仓库不存在或为私有');
     if (!res.ok) throw new BadRequestException(`GitHub API 返回 ${res.status}`);
     const data: any = await res.json();
@@ -444,9 +455,9 @@ export class ProductsService {
     // 若无版本号，尝试拉取最新 release
     if (!entity.version) {
       try {
-        const relRes = await fetch(
+        const relRes = await this.timedFetch(
           `https://api.github.com/repos/${owner}/${repo}/releases/latest`,
-          { headers },
+          headers,
         );
         if (relRes.ok) {
           const rel: any = await relRes.json();

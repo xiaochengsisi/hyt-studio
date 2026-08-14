@@ -23,6 +23,9 @@ import { logout, auth } from '../stores/auth';
 
 const BASE = '/api';
 
+/** 默认请求超时：20s，避免网络异常时请求无限挂起 */
+const DEFAULT_TIMEOUT = 20_000;
+
 /** 读取 CSRF 双提交令牌（由后端在登录 / 改密 / 恢复会话时下发到内存态 auth store） */
 function csrfToken(): string {
   return auth?.csrfToken || '';
@@ -30,18 +33,44 @@ function csrfToken(): string {
 
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const token = csrfToken();
-  const res = await fetch(`${BASE}${url}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'X-CSRF-Token': token } : {}),
-    },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${url}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'X-CSRF-Token': token } : {}),
+      },
+      signal: controller.signal,
+      ...options,
+    });
+  } catch (e: unknown) {
+    clearTimeout(timer);
+    throw new Error(
+      e instanceof Error && e.name === 'AbortError' ? '请求超时，请稍后重试' : '网络异常，请检查网络后重试',
+      { cause: e },
+    );
+  }
+  clearTimeout(timer);
+
+  // 401：会话失效，清理本地态并跳登录（logout 内部总能清理，无需 await）
+  if (res.status === 401) {
+    void logout();
+    throw new Error('登录已失效，请重新登录');
+  }
+
+  // 非 JSON 响应（如 502 网关返回 HTML 错误页）不直接 res.json()，避免抛技术性解析错误
+  const ct = res.headers.get('content-type') || '';
+  if (!res.ok || !ct.includes('application/json')) {
+    throw new Error(`请求失败（${res.status}），请稍后重试`);
+  }
   const body: ApiResponse<T> = await res.json();
   if (body.code !== 0) {
-    if (res.status === 401 || body.code === 401) {
-      logout();
+    if (body.code === 401) {
+      void logout();
+      throw new Error('登录已失效，请重新登录');
     }
     const msg = Array.isArray(body.message) ? body.message.join('; ') : body.message;
     throw new Error(msg || '请求失败');

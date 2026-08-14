@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '../api/client';
 import type { SiteConfig } from '@hyt/shared';
+import { safeUrl } from '../utils/safe-url';
 defineProps<{ site: SiteConfig }>();
 const { t } = useI18n();
 
@@ -56,7 +57,7 @@ async function onSubscribe() {
 
         <div class="footer-col">
           <div class="f-head">{{ t('footer.contact') }}</div>
-          <a v-if="site.github" :href="site.github" target="_blank" rel="noopener">GitHub ↗</a>
+          <a v-if="site.github" :href="safeUrl(site.github)" target="_blank" rel="noopener">GitHub ↗</a>
           <a v-if="site.email" :href="`mailto:${site.email}`">{{ site.email }}</a>
         </div>
 

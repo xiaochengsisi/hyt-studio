@@ -5,6 +5,7 @@ import { BulkActionResult, BulkActionPayload, HealthBadge, Paginated, Product } 
 import { ProductsService, QueryProducts } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('products')
 @Controller('api/products')
@@ -82,39 +83,46 @@ export class ProductsController {
   }
 
   /** Admin: all products (any status) */
+  @Roles('admin')
   @Get('admin')
   adminList(@Query() query: QueryProducts): Promise<Paginated<Product>> {
     return this.productsService.list(query);
   }
 
   /** Admin: 批量操作（需置于 :id 之前，避免被通配匹配） */
+  @Roles('admin')
   @Post('admin/bulk')
   bulk(@Body() body: BulkActionPayload): Promise<BulkActionResult> {
     return this.productsService.bulk(body.ids || [], body.action).then((affected) => ({ affected }));
   }
 
   /** Admin: product by id */
+  @Roles('admin')
   @Get('admin/:id')
   adminDetail(@Param('id') id: number): Promise<Product> {
     return this.productsService.findById(id);
   }
 
   /** Admin: 同步 GitHub 数据 */
+  @Roles('admin')
   @Post('admin/:id/sync-github')
   syncGithub(@Param('id') id: number): Promise<Product> {
     return this.productsService.syncGithub(Number(id));
   }
 
+  @Roles('admin')
   @Post('admin')
   create(@Body() data: CreateProductDto, @Req() req: any): Promise<Product> {
     return this.productsService.create(data as any, req?.user?.username);
   }
 
+  @Roles('admin')
   @Put('admin/:id')
   update(@Param('id') id: number, @Body() data: UpdateProductDto, @Req() req: any): Promise<Product> {
     return this.productsService.update(id, data as any, req?.user?.username);
   }
 
+  @Roles('admin')
   @Delete('admin/:id')
   remove(@Param('id') id: number): Promise<void> {
     return this.productsService.remove(Number(id));

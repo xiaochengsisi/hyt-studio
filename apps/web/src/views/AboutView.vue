@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { api } from '../api/client';
 import type { SiteConfig } from '@hyt/shared';
 import { resolveContent, type PageContent } from '../content';
+import { safeUrl } from '../utils/safe-url';
 
 const site = ref<SiteConfig | null>(null);
 const content = ref<PageContent>(resolveContent());
@@ -51,7 +52,7 @@ onMounted(async () => {
           </div>
           <div class="contact-line">
             <span class="contact-label">GitHub</span>
-            <a v-if="site.github" :href="site.github" target="_blank" rel="noopener" class="contact-value">{{ site.github }}</a>
+            <a v-if="site.github" :href="safeUrl(site.github)" target="_blank" rel="noopener" class="contact-value">{{ site.github }}</a>
             <span v-else class="contact-value muted">—</span>
           </div>
         </div>

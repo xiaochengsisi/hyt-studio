@@ -9,6 +9,7 @@ import Comments from '../components/Comments.vue';
 import InstallCopy from '../components/InstallCopy.vue';
 import { setSeo, setJsonLd } from '../composables/useSeo';
 import { getAnonId, getLikedSlugs, setLiked, fmtCount } from '../utils/anon-id';
+import { safeUrl } from '../utils/safe-url';
 
 const route = useRoute();
 const product = ref<Product | null>(null);
@@ -198,9 +199,9 @@ function fmtDate(s?: string): string {
           </div>
 
           <div class="actions" v-if="product.repoUrl || product.homepage || product.docsUrl">
-            <a v-if="product.repoUrl" :href="product.repoUrl" target="_blank" rel="noopener" class="button button-primary">GitHub 仓库 ↗</a>
-            <a v-if="product.homepage" :href="product.homepage" target="_blank" rel="noopener" class="button">在线演示</a>
-            <a v-if="product.docsUrl" :href="product.docsUrl" target="_blank" rel="noopener" class="button">文档</a>
+            <a v-if="product.repoUrl" :href="safeUrl(product.repoUrl)" target="_blank" rel="noopener" class="button button-primary">GitHub 仓库 ↗</a>
+            <a v-if="product.homepage" :href="safeUrl(product.homepage)" target="_blank" rel="noopener" class="button">在线演示</a>
+            <a v-if="product.docsUrl" :href="safeUrl(product.docsUrl)" target="_blank" rel="noopener" class="button">文档</a>
           </div>
 
           <div class="detail-foot">

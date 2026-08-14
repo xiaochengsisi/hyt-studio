@@ -9,6 +9,7 @@ import Pagination from '../components/Pagination.vue';
 const route = useRoute();
 const products = ref<Product[]>([]);
 const loading = ref(true);
+const error = ref('');
 const keyword = ref('');
 const page = ref(1);
 const pageSize = 9;
@@ -24,6 +25,7 @@ const sort = ref<'default' | 'hot' | 'views' | 'likes' | 'stars' | 'newest'>(
 
 async function load() {
   loading.value = true;
+  error.value = '';
   try {
     const res = await api.getProducts({
       keyword: keyword.value || undefined,
@@ -35,6 +37,8 @@ async function load() {
     });
     products.value = res.items;
     total.value = res.total;
+  } catch (e: any) {
+    error.value = e.message || '加载失败，请稍后重试';
   } finally {
     loading.value = false;
   }
@@ -161,6 +165,7 @@ onMounted(() => {
       </div>
 
       <div v-if="loading" class="empty">loading…</div>
+      <div v-else-if="error" class="empty error-text">{{ error }}</div>
       <div v-else-if="products.length" class="grid grid-products">
         <div v-for="(p, i) in products" :key="p.id" v-reveal="`d-${(i % 3) + 1}`">
           <ProductCard :product="p" />

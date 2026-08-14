@@ -6,6 +6,7 @@ import Pagination from '../components/Pagination.vue';
 
 const articles = ref<Article[]>([]);
 const loading = ref(true);
+const error = ref('');
 const keyword = ref('');
 const page = ref(1);
 const pageSize = 8;
@@ -13,10 +14,13 @@ const total = ref(0);
 
 async function load() {
   loading.value = true;
+  error.value = '';
   try {
     const res = await api.getArticles({ keyword: keyword.value || undefined, page: page.value, pageSize });
     articles.value = res.items;
     total.value = res.total;
+  } catch (e: any) {
+    error.value = e.message || '加载失败，请稍后重试';
   } finally {
     loading.value = false;
   }
@@ -57,6 +61,7 @@ onMounted(load);
       </div>
 
       <div v-if="loading" class="empty">loading…</div>
+      <div v-else-if="error" class="empty error-text">{{ error }}</div>
       <div v-else-if="articles.length" class="grid">
         <router-link
           v-for="(a, i) in articles"

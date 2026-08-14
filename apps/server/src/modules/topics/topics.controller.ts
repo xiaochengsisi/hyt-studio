@@ -4,6 +4,7 @@ import { Topic } from '@hyt/shared';
 import { TopicsService } from './topics.service';
 import { CreateTopicDto, UpdateTopicDto } from './dto/topic.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('topics')
 @Controller('api/topics')
@@ -24,26 +25,31 @@ export class TopicsController {
     return this.topicsService.findBySlug(slug);
   }
 
+  @Roles('admin')
   @Get('admin')
   adminList(): Promise<Topic[]> {
     return this.topicsService.listAll();
   }
 
+  @Roles('admin')
   @Get('admin/:id')
   adminDetail(@Param('id') id: number): Promise<Topic> {
     return this.topicsService.findById(id);
   }
 
+  @Roles('admin')
   @Post('admin')
   create(@Body() data: CreateTopicDto): Promise<Topic> {
     return this.topicsService.create(data as any);
   }
 
+  @Roles('admin')
   @Put('admin/:id')
   update(@Param('id') id: number, @Body() data: UpdateTopicDto): Promise<Topic> {
     return this.topicsService.update(id, data as any);
   }
 
+  @Roles('admin')
   @Delete('admin/:id')
   remove(@Param('id') id: number): Promise<void> {
     return this.topicsService.remove(Number(id));

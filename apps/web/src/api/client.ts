@@ -15,11 +15,33 @@ import type {
 
 const BASE = '/api';
 
+/** 默认请求超时：15s，避免网络异常时请求无限挂起 */
+const DEFAULT_TIMEOUT = 15_000;
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${url}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      ...options,
+    });
+  } catch (e: unknown) {
+    clearTimeout(timer);
+    throw new Error(
+      e instanceof Error && e.name === 'AbortError' ? '请求超时，请稍后重试' : '网络异常，请检查网络后重试',
+      { cause: e },
+    );
+  }
+  clearTimeout(timer);
+
+  // 非 JSON 响应（如 502 网关返回 HTML 错误页）不直接 res.json()，避免抛技术性解析错误
+  const ct = res.headers.get('content-type') || '';
+  if (!res.ok || !ct.includes('application/json')) {
+    throw new Error(`请求失败（${res.status}），请稍后重试`);
+  }
   const body: ApiResponse<T> = await res.json();
   if (body.code !== 0) {
     const msg = Array.isArray(body.message) ? body.message.join('; ') : body.message;

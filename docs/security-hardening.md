@@ -33,6 +33,20 @@
 
 **验证**：`npm run build`、`npm run typecheck`（全 workspace）、`npm run lint`（0 error）、`npm test`（server 10/10）均通过。
 
+### 本轮新增（第 21–27 项，源于全量只读审查）
+
+| #   | 风险                                                                                   | 严重度 | 修复位置                                                                                                                                                                                                              | 说明                                                                                                                                                                                                                                          |
+| --- | -------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 21  | 授权覆盖不一致：articles/products/topics/translations/revisions/subscribers/stats 后台写（及部分读）接口缺 `@Roles('admin')` | 中     | `modules/{articles,products,topics,translations,revisions,subscribers,stats}/*.controller.ts`                                                                                                                       | 为 7 个控制器补齐 `@Roles('admin')`（`translations`/`revisions` 类级，其余方法级），与既有敏感接口一致，消除「仅登录即可越权写 / 读未发布内容」的隐性缺口                                                                                       |
+| 22  | articles 归档前后端不一致                                                                | 低     | `apps/admin/src/views/ArticlesView.vue`                                                                                                                                                                             | 后端 `bulk` 拒绝 `archive` 且 `shared` 类型仅 `'published'\|'draft'`，但前端 UI 提供归档按钮并渲染 archived 状态——三方不一致；移除前端 archive 批量操作与归档徽章，与后端 + 类型对齐                                                         |
+| 23  | ArticleEditView 存草稿时 `publishedAt` 可能覆盖已有发布时间                            | 低     | `apps/admin/src/views/ArticleEditView.vue`                                                                                                                                                                         | 改为仅 `publish` 时设置新 `publishedAt`；存草稿传 `undefined`，不覆盖后端已有值                                                                                                                                                                  |
+| 24  | 前端 `request` 缺 `res.ok`/非 JSON 防御/超时                                            | 低     | `apps/web/src/api/client.ts`、`apps/admin/src/api/client.ts`                                                                                                                                                       | 两者均增加：①`res.ok` 检查；②`Content-Type` 校验（非 JSON 抛友好错误）；③`AbortController` 超时（web 15s / admin 20s）；admin 401 分支保留 `logout()`                                                                                           |
+| 25  | 前端 `:href` 绑定用户/管理员来源 URL 未校验协议（潜在 `javascript:` XSS）              | 中     | `apps/web/src/utils/safe-url.ts` + `ProductDetailView`/`TeamView`/`SiteFooter`/`AboutView`                                                                                                                         | 新增 `safeUrl()`：仅允许 `http(s)`/`mailto`，过滤 `javascript:`/`data:`；应用于所有渲染用户/管理员可配置外链的 `:href`                                                                                                                            |
+| 26  | `products.syncGithub` 出站 fetch 无超时（GitHub 慢响应挂起）                            | 低     | `modules/products/products.service.ts`                                                                                                                                                                             | 封装 `timedFetch()`（AbortController 30s），用于两次 GitHub API 调用，避免请求长时间挂起                                                                                                                                                          |
+| 27  | `logout` 未 await + 列表错误态缺失 + ApiDocs `window.open` 缺 `noopener`               | 低     | `apps/admin/src/layouts/AdminLayout.vue`、`ForceChangePassword.vue`、`apps/web/src/views/{ProductsView,BlogView,TeamView}.vue`、`ApiDocsView.vue`                                                                  | admin 登出改为 `await logout()` 后再跳路由；web 三列表 `load()` 补 `catch`+错误态；ApiDocs 试调 `window.open` 加 `noopener` 并禁用含 `:param` 端点点击                                                                                            |
+
+
+
 ---
 
 ## 二、依赖漏洞扫描与升级结果（已完成：21 → 0）
@@ -61,7 +75,7 @@
 
 | 风险                                              | 说明                                                                                                         | 建议                                                                                                                                |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 角色级鉴权缺失                                    | 全局 `JwtAuthGuard` 只验登录态不验 `role`；当前仅有 `admin` 角色故无影响，但若未来引入非管理员账号则越权风险 | 增加 `RolesGuard` + `@Roles('admin')`，对 `users / site-config / uploads / media / backup / audit-log` 等写接口加角色约束           |
+| 角色级鉴权缺失（**已解决，见第 7 + 21 项**）       | 全局 `JwtAuthGuard` 只验登录态不验 `role`；已全部后台写/敏感读接口补 `@Roles('admin')`（含本轮 articles/products/topics/translations/revisions/subscribers/stats） | 后续若引入非管理员角色，需同步评估各 `@Roles` 边界                                                                                          |
 | JWT 存储于 localStorage（**已解决，见第 14 项**） | 原前端令牌存 `localStorage`，XSS 可窃取；现已改为 httpOnly Cookie 下发，前端不再触碰令牌                     | 无需额外操作；可后续按需引入刷新令牌（refresh token）机制进一步缩短访问令牌有效期                                                   |
 | 内部 SSRF（管理面）                               | `ai-seo` / `webhook` 的 URL 来自后台配置，管理员可控；若管理员账号被盗可探测内网                             | 对出站请求做 URL 校验：禁止 `localhost` / `127.0.0.1` / `169.254.*` / `10.*` / `192.168.*` / `172.16-31.*`，或仅允许 HTTPS 公网地址 |
 | `analyticsCode` 注入 XSS                          | 后台 `site-config.analyticsCode` 被原样注入 `<head>` 并执行 `<script>`                                       | 属管理员自有功能；若担忧，可改为仅允许白名单统计平台（百度/GA）的代码片段，或做沙箱/域名校验                                        |
@@ -69,7 +83,7 @@
 | 登录无锁定/验证码                                 | 仅 10/min 限流，存在凭证填充风险                                                                             | 失败 5 次临时锁定 + 可选图形/滑块验证码（结合已增强的失败审计日志）                                                                 |
 | S3 写死 `ACL: public-read`                        | 私有桶场景会失败                                                                                             | 由 `S3_ACL` 环境变量控制，默认 `public-read`                                                                                        |
 
-> 注：本节上方的「角色级鉴权缺失 / 内部 SSRF / 提交接口防刷 / 登录无锁定 / S3 ACL 写死」均已在本报告第一节（第 7–12 项）实现，已不再是残留风险；第 15–20 项又补齐了异常信息泄露、越权缺口、框架指纹、锁定持久化、CSRF、哈希强度。当前真正尚未处理的仅余 `analyticsCode` 注入 XSS（属管理员自有功能，风险可控）。
+> 注：本节上方的「角色级鉴权缺失 / 内部 SSRF / 提交接口防刷 / 登录无锁定 / S3 ACL 写死」均已在本报告第一节（第 7–12 项）实现；第 15–20 项补齐异常信息泄露、越权缺口、框架指纹、锁定持久化、CSRF、哈希强度；第 21–27 项又补齐了 7 个控制器授权覆盖一致性、articles 归档前后端不一致、前端 `request` 健壮性、href 协议校验、GitHub 同步超时、logout 竞态与列表错误态。当前真正尚未处理的仅余 `analyticsCode` 注入 XSS（属管理员自有功能，风险可控）。
 
 **已确认安全的方面**：
 
@@ -113,3 +127,10 @@
 - [x] 登录失败锁定持久化（重启/多实例仍有效）
 - [x] CSRF 双提交 Token 防护（后端守卫 + 前端令牌回传）
 - [x] bcrypt 哈希成本提升至 12
+- [x] 授权覆盖补齐：articles/products/topics/translations/revisions/subscribers/stats 共 7 个控制器补 `@Roles('admin')`
+- [x] articles 归档前后端不一致修复（移除前端 archive UI，与后端+类型对齐）
+- [x] ArticleEditView 存草稿不覆盖已有 `publishedAt`
+- [x] 前端 `request` 增加 `res.ok`/非 JSON 防御/`AbortController` 超时（web 15s / admin 20s）
+- [x] 前端 `:href` 协议校验（`safeUrl` 过滤 `javascript:`/`data:`）
+- [x] `products.syncGithub` GitHub fetch 加 30s 超时
+- [x] `logout` 统一 `await` + web 列表 `error` 态 + ApiDocs `noopener`

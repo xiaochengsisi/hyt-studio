@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { Subscriber } from '@hyt/shared';
 import { SubscribersService } from './subscribers.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('subscribers')
 @Controller('api/subscribers')
@@ -39,12 +40,14 @@ export class SubscribersController {
   }
 
   /** Admin: 订阅者列表 */
+  @Roles('admin')
   @Get()
   list(): Promise<Subscriber[]> {
     return this.subscribersService.listAll();
   }
 
   /** Admin: 群发邮件 */
+  @Roles('admin')
   @Post('broadcast')
   broadcast(@Body() body: { subject?: string; html?: string }): Promise<{ sent: number }> {
     return this.subscribersService.broadcast(body?.subject || '', body?.html || '');

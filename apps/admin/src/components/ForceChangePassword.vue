@@ -37,8 +37,8 @@ async function onSubmit() {
   }
 }
 
-function onLogout() {
-  logout();
+async function onLogout() {
+  await logout();
   router.push('/login');
 }
 </script>

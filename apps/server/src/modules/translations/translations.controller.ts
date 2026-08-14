@@ -1,8 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { TranslationsService, TranslationFields } from './translations.service';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('translations')
+@Roles('admin')
 @Controller('api/translations')
 export class TranslationsController {
   constructor(private readonly service: TranslationsService) {}

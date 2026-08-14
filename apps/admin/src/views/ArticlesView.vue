@@ -64,10 +64,10 @@ function toggleSelectAll() {
 
 const allSelected = () => articles.value.length > 0 && selected.value.size === articles.value.length;
 
-async function onBulk(action: 'publish' | 'draft' | 'archive' | 'delete') {
+async function onBulk(action: 'publish' | 'draft' | 'delete') {
   const ids = [...selected.value];
   if (!ids.length) return;
-  const label = action === 'publish' ? '发布' : action === 'draft' ? '转为草稿' : action === 'archive' ? '归档' : '删除';
+  const label = action === 'publish' ? '发布' : action === 'draft' ? '转为草稿' : '删除';
   if (!confirm(`确定对选中的 ${ids.length} 项执行「${label}」？`)) return;
   bulkBusy.value = true;
   try {
@@ -104,7 +104,6 @@ async function onBulk(action: 'publish' | 'draft' | 'archive' | 'delete') {
       <div class="bulk-actions">
         <button class="button button-ghost" :disabled="bulkBusy" @click="onBulk('publish')">发布</button>
         <button class="button button-ghost" :disabled="bulkBusy" @click="onBulk('draft')">转草稿</button>
-        <button class="button button-ghost" :disabled="bulkBusy" @click="onBulk('archive')">归档</button>
         <button class="button button-danger" :disabled="bulkBusy" @click="onBulk('delete')">删除</button>
       </div>
     </div>
@@ -133,7 +132,7 @@ async function onBulk(action: 'publish' | 'draft' | 'archive' | 'delete') {
             <td class="muted">{{ a.slug }}</td>
             <td>
               <span class="badge" :class="a.status === 'published' ? 'badge-published' : 'badge-draft'">
-                {{ a.status === 'published' ? 'published' : a.status === 'draft' ? 'draft' : 'archived' }}
+                {{ a.status === 'published' ? 'published' : 'draft' }}
               </span>
             </td>
             <td class="muted">{{ a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : '—' }}</td>

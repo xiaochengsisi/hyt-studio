@@ -2,8 +2,10 @@ import { Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Revision } from '@hyt/shared';
 import { RevisionsService } from './revisions.service';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('revisions')
+@Roles('admin')
 @Controller('api/revisions')
 export class RevisionsController {
   constructor(private readonly revisionsService: RevisionsService) {}

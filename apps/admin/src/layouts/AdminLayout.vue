@@ -8,8 +8,8 @@ import CommandPalette from '../components/CommandPalette.vue';
 const router = useRouter();
 const cmdOpen = ref(false);
 
-function onLogout() {
-  logout();
+async function onLogout() {
+  await logout();
   router.push('/login');
 }
 

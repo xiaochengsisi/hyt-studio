@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { ActivityItem, DashboardStats, SiteStats } from '@hyt/shared';
 import { StatsService } from './stats.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('stats')
 @Controller('api/stats')
@@ -10,6 +11,7 @@ export class StatsController {
   constructor(private readonly statsService: StatsService) {}
 
   /** 管理员：仪表盘聚合统计 */
+  @Roles('admin')
   @Get('dashboard')
   dashboard(): Promise<DashboardStats> {
     return this.statsService.getDashboardStats();

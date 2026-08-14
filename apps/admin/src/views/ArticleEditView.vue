@@ -84,7 +84,8 @@ async function onSubmit(publish = false) {
   const payload = {
     ...form,
     status: publish ? 'published' : form.status,
-    publishedAt: publish ? new Date().toISOString() : form.publishedAt,
+    // 仅在显式发布时写入发布时间；存草稿时不回传该字段，避免 undefined 覆盖后端已有值
+    ...(publish ? { publishedAt: new Date().toISOString() } : {}),
   };
   try {
     if (isEdit) {

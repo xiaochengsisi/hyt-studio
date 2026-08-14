@@ -85,7 +85,9 @@ const methodColor: Record<string, string> = {
 };
 
 function tryApi(path: string) {
-  window.open(path, '_blank');
+  // 含路径参数（:slug 等）的端点直接打开会 404，仅对完整路径提供试调
+  if (path.includes(':')) return;
+  window.open(path, '_blank', 'noopener,noreferrer');
 }
 </script>
 
@@ -118,6 +120,7 @@ function tryApi(path: string) {
             v-for="ep in g.endpoints"
             :key="ep.path + ep.method"
             class="endpoint-row"
+            :class="{ 'no-click': ep.method !== 'GET' || ep.path.includes(':') }"
             @click="ep.method === 'GET' && tryApi(ep.path)"
           >
             <span class="method" :class="methodColor[ep.method]">{{ ep.method }}</span>
@@ -235,6 +238,14 @@ function tryApi(path: string) {
 
 .endpoint-row:hover {
   background: var(--bg-soft);
+}
+
+.endpoint-row.no-click {
+  cursor: default;
+}
+
+.endpoint-row.no-click:hover {
+  background: transparent;
 }
 
 .method {

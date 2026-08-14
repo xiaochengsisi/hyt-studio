@@ -4,14 +4,19 @@ import { api } from '../api/client';
 import type { Member } from '@hyt/shared';
 import Skeleton from '../components/Skeleton.vue';
 import { setSeo } from '../composables/useSeo';
+import { safeUrl } from '../utils/safe-url';
 
 const members = ref<Member[]>([]);
 const loading = ref(true);
+const error = ref('');
 
 onMounted(async () => {
   setSeo('团队', 'HYT Studio 的团队成员与贡献者');
+  error.value = '';
   try {
     members.value = await api.getMembers();
+  } catch (e: any) {
+    error.value = e.message || '加载失败，请稍后重试';
   } finally {
     loading.value = false;
   }
@@ -34,6 +39,7 @@ function initials(name: string): string {
       </div>
 
       <Skeleton v-if="loading" :lines="3" />
+      <div v-else-if="error" class="empty error-text">{{ error }}</div>
       <div v-else-if="members.length" class="team-grid">
         <article
           v-for="(m, i) in members"
@@ -53,9 +59,9 @@ function initials(name: string): string {
           </div>
           <p v-if="m.bio" class="member-bio">{{ m.bio }}</p>
           <div class="member-links" v-if="m.github || m.twitter || m.website || m.email">
-            <a v-if="m.github" :href="m.github" target="_blank" rel="noopener" class="mlink">GitHub ↗</a>
-            <a v-if="m.twitter" :href="m.twitter" target="_blank" rel="noopener" class="mlink">Twitter ↗</a>
-            <a v-if="m.website" :href="m.website" target="_blank" rel="noopener" class="mlink">网站 ↗</a>
+            <a v-if="m.github" :href="safeUrl(m.github)" target="_blank" rel="noopener" class="mlink">GitHub ↗</a>
+            <a v-if="m.twitter" :href="safeUrl(m.twitter)" target="_blank" rel="noopener" class="mlink">Twitter ↗</a>
+            <a v-if="m.website" :href="safeUrl(m.website)" target="_blank" rel="noopener" class="mlink">网站 ↗</a>
             <a v-if="m.email" :href="`mailto:${m.email}`" class="mlink">邮箱 ↗</a>
           </div>
         </article>
